@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/VacantThinker/firefox-addon-framework-easy-nodejs.git"
+    "url": "git@github.com:VacantThinker/firefox-addon-framework-easy-nodejs.git"
   },
   "author": "VacantThinker",
   "license": "AGPL-3.0-only",
