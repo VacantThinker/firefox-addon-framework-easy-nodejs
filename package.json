@@ -1,11 +1,13 @@
 {
   "name": "@vacantthinker/firefox-addon-framework-easy-nodejs",
-  "version": "2026.5.2201",
+  "version": "2026.5.2202",
   "description": "",
   "main": "index.js",
-  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "git_acp": "git add . && git commit -m 'add toolzipfileordirs.js' && git push",
+    "git_acp": "git add . && git commit -m 'convert to es module' && git push",
     "npm_publish": "npm publish"
   },
   "dependencies": {

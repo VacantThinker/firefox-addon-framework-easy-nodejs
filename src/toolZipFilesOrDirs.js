@@ -1,3 +1,12 @@
+import archiver from 'archiver';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Fix for __dirname in ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /**
  *
  * // zip dist dir => output: current-project-name.zip
@@ -28,56 +37,49 @@ export function zipFilesOrDirectorys(
     oneDirecoty = null,
     ignoreObj = null) {
 
-    const archiver = require('archiver')
-    const fs = require('fs')
-    const path = require('path')
     const basename = path.basename(__dirname)
-
     const arrFilename = Array.from([basename])
+
     if (outputAppendName) {
         arrFilename.push(outputAppendName)
     }
+
     const output = fs.createWriteStream(path.join(__dirname, `${arrFilename.join('-')}.zip`))
     const archive = archiver('zip')
+
     output.on('close', () => {
         console.info(`${outputAppendName} zip finish!`)
     })
     archive.on('error', (e) => {
-        console.info('e=');
-        console.info(e);
+        console.info('e=', e);
     })
 
     archive.pipe(output)
 
     if (oneDirecoty) {
-        // todo one dir
         archive.directory(`${oneDirecoty}/`, false)
     } else if (ignoreObj) {
         let strings = fs.readdirSync(__dirname);
-
         let {exclude, suffix} = ignoreObj
         let arrFilter = strings
             .filter(name => !exclude.includes(name))
             .filter(name => !suffix.some(value => name.endsWith(value)))
-        console.info('arrFilter=');
-        console.info(arrFilter);
 
         arrFilter.forEach(filename => {
             let pathFile = path.join(__dirname, filename);
             let stats = fs.lstatSync(pathFile);
             if (stats.isDirectory()) {
-                archive.directory(`${filename}/`)
+                archive.directory(pathFile, filename) // Fixed pathing issue
             } else if (stats.isFile()) {
                 archive.file(pathFile, {name: filename})
             }
         })
-    } else {
-
     }
 
     archive.finalize();
     console.info(`${outputAppendName} zip starting`)
 }
+
 
 /**
  * zipFilesOrDirectorys(null, 'dist');
