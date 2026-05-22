@@ -1,12 +1,3 @@
-import archiver from 'archiver';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// Fix for __dirname in ES Modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 /**
  *
  * // zip dist dir => output: current-project-name.zip
@@ -32,52 +23,67 @@ const __dirname = path.dirname(__filename);
  *   suffix: [string]
  * }|null}
  */
+
+import {createRequire} from 'module';
+import path from 'path';
+
 export function zipFilesOrDirectorys(
     outputAppendName,
     oneDirecoty = null,
     ignoreObj = null) {
 
-    const basename = path.basename(__dirname)
-    const arrFilename = Array.from([basename])
+    const require = createRequire(import.meta.url);
+    const fs = require('fs');
+    const archiver = require('archiver');
 
+    // FIX: Use the execution root directory instead of the package directory
+    const projectRootDir = process.cwd();
+    const basename = path.basename(projectRootDir);
+
+    const arrFilename = Array.from([basename]);
     if (outputAppendName) {
-        arrFilename.push(outputAppendName)
+        arrFilename.push(outputAppendName);
     }
 
-    const output = fs.createWriteStream(path.join(__dirname, `${arrFilename.join('-')}.zip`))
-    const archive = archiver('zip')
+    // Output the zip directly into your project root directory
+    const output = fs.createWriteStream(path.join(projectRootDir, `${arrFilename.join('-')}.zip`));
+    const archive = archiver('zip');
 
     output.on('close', () => {
-        console.info(`${outputAppendName} zip finish!`)
-    })
+        console.info(`${outputAppendName} zip finish!`);
+    });
     archive.on('error', (e) => {
         console.info('e=', e);
-    })
+    });
 
-    archive.pipe(output)
+    archive.pipe(output);
 
     if (oneDirecoty) {
-        archive.directory(`${oneDirecoty}/`, false)
+        archive.directory(`${oneDirecoty}/`, false);
     } else if (ignoreObj) {
-        let strings = fs.readdirSync(__dirname);
-        let {exclude, suffix} = ignoreObj
+        // Scan the project root directory, not node_modules
+        let strings = fs.readdirSync(projectRootDir);
+
+        let {exclude, suffix} = ignoreObj;
         let arrFilter = strings
             .filter(name => !exclude.includes(name))
-            .filter(name => !suffix.some(value => name.endsWith(value)))
+            .filter(name => !suffix.some(value => name.endsWith(value)));
+
+        console.info('arrFilter=', arrFilter);
 
         arrFilter.forEach(filename => {
-            let pathFile = path.join(__dirname, filename);
+            let pathFile = path.join(projectRootDir, filename);
             let stats = fs.lstatSync(pathFile);
             if (stats.isDirectory()) {
-                archive.directory(pathFile, filename) // Fixed pathing issue
+                archive.directory(pathFile, filename);
             } else if (stats.isFile()) {
-                archive.file(pathFile, {name: filename})
+                archive.file(pathFile, {name: filename});
             }
-        })
+        });
     }
 
     archive.finalize();
-    console.info(`${outputAppendName} zip starting`)
+    console.info(`${outputAppendName} zip starting`);
 }
 
 
