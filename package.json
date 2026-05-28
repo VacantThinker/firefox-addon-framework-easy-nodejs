@@ -1,24 +1,17 @@
 {
   "name": "@vacantthinker/firefox-addon-framework-easy-nodejs",
-  "version": "2026.0522.1749",
+  "version": "2026.0528.2233",
   "description": "",
   "main": "index.js",
   "publishConfig": {
     "access": "public",
     "provenance": true
   },
-  "scripts": {
-    "git_acp": "git add . && git commit -m 'add github workflow npm-publish.ym; add publish.sh' && git push"
-  },
+  "scripts": {},
   "dependencies": {
     "@types/node": "^22.18.0",
     "archiver": "^7.0.1",
-    "copy-webpack-plugin": "^14.0.0",
-    "html-minimizer-webpack-plugin": "^6.0.0",
-    "json-minimizer-webpack-plugin": "^5.0.1",
-    "terser-webpack-plugin": "^5.3.14",
-    "webpack": "^5.102.1",
-    "webpack-cli": "^6.0.1"
+    "esbuild": "^0.28.0"
   },
   "repository": {
     "type": "git",

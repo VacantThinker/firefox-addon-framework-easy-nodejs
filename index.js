@@ -1,1 +1,2 @@
-export * from './src/toolZipFilesOrDirs.js'
+export * from './src/esbuildAddon.js'
+export * from './src/zipFilesOrDirs.js'
