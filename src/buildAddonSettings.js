@@ -2,48 +2,73 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 /**
- * Automatically generates extension UI and Service files based on user configuration.
+ * Generates the UI files (options.html, options.js) for the extension.
  * @param {Object} options
  * @param {string} [options.inputPath] - Path to userSettings.json.
- * @param {string} [options.outDir] - Output directory for generated files.
+ * @param {string} [options.outDir] - Output directory for UI files.
  */
-export async function buildAddonSettings(options = {}) {
-  // Default values: Set to the 'addons' folder under the project root.
-  const defaultInputPath = path.resolve(process.cwd(), 'addons/userSettings.json');
-  const defaultOutDir = path.resolve(process.cwd(), 'addons');
-
-  const inputPath = options.inputPath || defaultInputPath;
-  const outDir = options.outDir || defaultOutDir;
+export async function buildAddonOptionsUIFile(options = {}) {
+  const inputPath = options.inputPath || path.resolve(process.cwd(), 'addons/userSettings.json');
+  // Default UI output directory: addons/options
+  const outDir = options.outDir || path.resolve(process.cwd(), 'addons/options');
 
   try {
     const data = await fs.readFile(inputPath, 'utf8');
     const userSettings = JSON.parse(data);
 
-    // Ensure the output directory exists.
     await fs.mkdir(outDir, { recursive: true });
 
-    // 1. Generate the Service file (includes precise JSDoc return type declarations).
-    await fs.writeFile(
-        path.join(outDir, 'serviceUserSettings.js'),
-        generateServiceUserSettings(userSettings)
-    );
-
-    // 2. Generate the static HTML file.
     await fs.writeFile(
         path.join(outDir, 'options.html'),
         generateOptionsHtml(userSettings)
     );
 
-    // 3. Generate the Options JS file.
     await fs.writeFile(
         path.join(outDir, 'options.js'),
         generateOptionsJs(userSettings)
     );
 
-    console.log(`[Framework] ✅ Successfully built settings files to ${outDir}`);
+    console.log(`[Framework] ✅ Successfully built UI files to ${outDir}`);
   } catch (error) {
-    console.error(`[Framework] ❌ Failed to build settings:`, error);
+    console.error(`[Framework] ❌ Failed to build UI files:`, error);
   }
+}
+
+/**
+ * Generates the background service file (serviceUserSettings.js) for the extension.
+ * @param {Object} options
+ * @param {string} [options.inputPath] - Path to userSettings.json.
+ * @param {string} [options.outDir] - Output directory for the service file.
+ */
+export async function buildAddonServiceUserSettingsJSFile(options = {}) {
+  const inputPath = options.inputPath || path.resolve(process.cwd(), 'addons/userSettings.json');
+  // Default Service output directory: addons/src
+  const outDir = options.outDir || path.resolve(process.cwd(), 'addons/src');
+
+  try {
+    const data = await fs.readFile(inputPath, 'utf8');
+    const userSettings = JSON.parse(data);
+
+    await fs.mkdir(outDir, { recursive: true });
+
+    await fs.writeFile(
+        path.join(outDir, 'serviceUserSettings.js'),
+        generateServiceUserSettings(userSettings)
+    );
+
+    console.log(`[Framework] ✅ Successfully built Service file to ${outDir}`);
+  } catch (error) {
+    console.error(`[Framework] ❌ Failed to build Service file:`, error);
+  }
+}
+/**
+ * Legacy wrapper to run both generators simultaneously if needed.
+ */
+export async function buildAddonSettings(options = {}) {
+  await Promise.all([
+    buildAddonOptionsUIFile(options),
+    buildAddonServiceUserSettingsJSFile(options)
+  ]);
 }
 
 // ---------------- Internal Generation Logic ----------------
@@ -56,33 +81,24 @@ function generateServiceUserSettings(settings) {
   for (const [key, config] of Object.entries(settings)) {
     defaultValues[key] = config.selected;
 
-    // Dynamically infer standard JSDoc/TypeScript types.
     let jsdocType = 'string';
-    if (config.type === 'checkbox') {
-      jsdocType = 'string[]';
-    } else if (config.type === 'radio') {
-      // Determine if it is boolean or string based on the actual data type of 'selected'.
-      jsdocType = typeof config.selected;
-    } else if (config.type === 'number') {
-      jsdocType = 'number';
-    } else if (config.type === 'button') {
-      jsdocType = 'boolean';
-    } else {
-      jsdocType = typeof config.selected;
-    }
+    if (config.type === 'checkbox') jsdocType = 'string[]';
+    else if (config.type === 'radio') jsdocType = typeof config.selected;
+    else if (config.type === 'number') jsdocType = 'number';
+    else if (config.type === 'button') jsdocType = 'boolean';
+    else jsdocType = typeof config.selected;
 
     typeLines.push(` * ${key}: ${jsdocType}`);
   }
 
-  // Concatenate into the expected multi-line Object declaration format.
   const formattedJSDocType = `{\n${typeLines.join(',\n')}\n * }`;
 
   return `import { stoOpGet, stoOpSet } from '@vacantthinker/firefox-addon-framework-easy';
 
-// Removed 'options', keeping only default values for initialization purposes.
-const defaultSettings = ${JSON.stringify(defaultValues, null, 2)};
-
 export async function serviceInitUserSettings() {
+  // Placed inside the function to avoid global scope pollution.
+  const defaultSettings = ${JSON.stringify(defaultValues, null, 2)};
+
   const initPromises = Object.entries(defaultSettings)
       .map(async ([key, defaultValue]) => {
         const oldValue = await stoOpGet(key);
@@ -127,11 +143,14 @@ function generateOptionsHtml(settings) {
         html += `      </label>\n`;
         html += `    </div>\n`;
       });
-    } else if (type === 'button') {
+    }
+    else if (type === 'button') {
       html += `    <button type="button" id="btn-${key}"></button>\n`;
-    } else if (type === 'number' || type === 'text') {
+    }
+    else if (type === 'number' || type === 'text') {
       html += `    <input type="${type}" id="input-${key}" name="${key}">\n`;
-    } else if (type === 'span') {
+    }
+    else if (type === 'span') {
       html += `    <span id="span-${key}"></span>\n`;
     }
 

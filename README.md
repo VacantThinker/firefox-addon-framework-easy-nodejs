@@ -19,6 +19,10 @@ Below is a list of all public functions found inside the `src` directory:
 
 ### 📄 File: `src/buildAddonSettings.js`
 ```javascript
+export async function buildAddonOptionsUIFile(options = {  }
+
+export async function buildAddonServiceUserSettingsJSFile(options = {  }
+
 export async function buildAddonSettings(options = {  }
 
 export async function serviceInitUserSettings() {  }
