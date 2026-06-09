@@ -17,12 +17,13 @@ You can download, clone, or view the complete source code for this application h
 
 Below is a list of all public functions found inside the `src` directory:
 
-### 📄 File: `src/buildStaticOptions.js`
+### 📄 File: `src/buildAddonSettings.js`
 ```javascript
-export async function buildStaticOptions(
-    userSettingsPath = 'addons/src/userSettings.js',
-    outputDir = './addons',
-) {  }
+export async function buildAddonSettings(options = {  }
+
+export async function serviceInitUserSettings() {  }
+
+export async function serviceGetUserSettings() {  }
 
 ```
 
