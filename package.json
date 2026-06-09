@@ -1,14 +1,18 @@
 {
   "name": "@vacantthinker/firefox-addon-framework-easy-nodejs",
-  "version": "2026.0609.2122",
+  "version": "2026.0609.2209",
   "description": "",
   "main": "index.js",
   "publishConfig": {
     "access": "public",
     "provenance": true
   },
-  "scripts": {},
+  "scripts": {
+    "install_package": "npm install"
+  },
   "dependencies": {
+    "@types/firefox-webext-browser": "^143.0.0",
+    "@vacantthinker/firefox-addon-framework-easy": "latest",
     "@types/node": "^22.18.0",
     "archiver": "^7.0.1",
     "esbuild": "^0.28.0"
