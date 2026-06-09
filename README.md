@@ -19,7 +19,7 @@ Below is a list of all public functions found inside the `src` directory:
 
 ### 📄 File: `src/buildStaticOptions.js`
 ```javascript
-export async function buildStaticOptions(userSettingsPath, outputDir = './dist') {  }
+export function buildStaticOptions(filePath, outputDir = './dist') {  }
 
 ```
 
