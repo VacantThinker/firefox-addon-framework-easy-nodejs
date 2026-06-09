@@ -19,7 +19,7 @@ Below is a list of all public functions found inside the `src` directory:
 
 ### 📄 File: `src/esbuildAddon.js`
 ```javascript
-export function buildAddon(options = {  }
+export function buildAddon({  }
 
 ```
 
@@ -27,8 +27,9 @@ export function buildAddon(options = {  }
 ```javascript
 export function zipFilesOrDirectorys(
     outputAppendName,
-    oneDirecoty = null,
-    ignoreObj = null) {  }
+    oneDirectory = null,
+    ignoreObj = null,
+) {  }
 
 export function zipDist() {  }
 

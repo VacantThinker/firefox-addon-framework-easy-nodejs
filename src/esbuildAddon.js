@@ -1,88 +1,104 @@
-
-import {createRequire} from 'module';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
+import esbuild from 'esbuild';
 
 /**
  * addons => dist. Builds the Firefox Addon.
- * * @param {Object} options
- * @param {boolean} options.debug - If true, enables sourcemaps and disables minification.
- * @param {string[]} options.ENTRY_POINTS - Array of entry points relative to the source directory.
- * @param {string[]} options.EXCLUDE_LIST - Array of top-level directories/files to exclude.
+ * @param {Object} options
+ * @param {boolean} [options.debug=false]
+ * @param {string[]} [options.ENTRY_POINTS=[]]
+ * @param {string[]} [options.EXCLUDE_LIST=[]]
  */
-export function buildAddon(options = {}) {
-  const require = createRequire(import.meta.url);
-  const fs = require('fs');
-  const esbuild = require('esbuild');
-
-  // 1. Process Parameters
-  const debug = options.debug || false; // Defaults to false [cite: 4]
-  const ENTRY_POINTS = options.ENTRY_POINTS || [];
-  const EXCLUDE_LIST = options.EXCLUDE_LIST || [];
-
+export function buildAddon({
+                             debug = false,
+                             ENTRY_POINTS = [],
+                             EXCLUDE_LIST = [],
+                           } = {}) {
+  // 1. Process Configuration
   const minify = !debug;
   const sourcemap = debug;
 
-  // Resolve directories based on the caller's working directory, not the package's directory
   const srcDir = path.join(process.cwd(), 'addons');
   const distDir = path.join(process.cwd(), 'dist');
 
-  // 2. Clear the old dist directory before each build [cite: 6]
+  // 2. Clear the old dist directory
   if (fs.existsSync(distDir)) {
-    fs.rmSync(distDir, { recursive: true, force: true });
+    fs.rmSync(distDir, {recursive: true, force: true});
   }
-  fs.mkdirSync(distDir, { recursive: true });
+  fs.mkdirSync(distDir, {recursive: true});
 
-  // 3. Run Esbuild only if ENTRY_POINTS exist
-  if (ENTRY_POINTS.length > 0) {
+  // 3. Filter valid Entry Points
+  const validEntryPoints = [];
+
+  ENTRY_POINTS.forEach(entry => {
+    const fullPath = path.join(srcDir, entry);
+    if (fs.existsSync(fullPath)) {
+      validEntryPoints.push(fullPath);
+    }
+    else {
+      console.error(
+          `⚠️  Warning: Entry point file not found and will be skipped: "${entry}"`);
+      console.error(
+          `   Check the file exists at: ${fullPath} or remove it from your ENTRY_POINTS configuration.`);
+    }
+  });
+
+  // 4. Run Esbuild only if we have valid files
+  if (validEntryPoints.length > 0) {
     console.log('⚡ Bundling JavaScript modules...');
     esbuild.buildSync({
-      entryPoints: ENTRY_POINTS.map(entry => path.join(srcDir, entry)),
+      entryPoints: validEntryPoints, // Using the filtered list
       bundle: true,
       minify: minify,
       sourcemap: sourcemap,
       outdir: distDir,
       target: ['firefox100'],
-    }); // [cite: 8]
-  } else {
-    console.log('⚡ No ENTRY_POINTS provided. Skipping Esbuild bundling...');
+    });
+  }
+  else {
+    console.log('⚡ No valid ENTRY_POINTS found. Skipping Esbuild bundling...');
   }
 
-  // 4. Recursively copy non-JS static assets (HTML, CSS, JSON, Images) [cite: 9]
-  function copyStaticFiles(src, dest) {
+  // 5. Recursively copy non-JS static assets
+  function copyStaticFiles(
+      src,
+      dest,
+  ) {
     const exists = fs.existsSync(src);
     if (!exists) return;
 
-    const stats = fs.statSync(src); // [cite: 10]
+    const stats = fs.statSync(src);
     const isDirectory = stats.isDirectory();
 
-    // Normalize the current relative path from 'addons' root [cite: 11]
     const relativePath = path.relative(srcDir, src).replace(/\\/g, '/');
     const topLevelName = relativePath.split('/')[0];
 
-    // Rule A: Skip if the path belongs to an item in the EXCLUDE_LIST [cite: 12]
-    if (relativePath && EXCLUDE_LIST.includes(topLevelName)) {
+    // Exclude logic
+    if (relativePath && (EXCLUDE_LIST.includes(relativePath) ||
+        EXCLUDE_LIST.includes(topLevelName))) {
       return;
     }
 
     if (isDirectory) {
-      if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true }); // [cite: 13]
+      if (!fs.existsSync(dest)) fs.mkdirSync(dest, {recursive: true});
       fs.readdirSync(src).forEach((childItemName) => {
         copyStaticFiles(
             path.join(src, childItemName),
-            path.join(dest, childItemName)
+            path.join(dest, childItemName),
         );
-      }); // [cite: 14]
-    } else {
-      // Rule B: Skip if the file matches one of your ENTRY_POINTS to protect Esbuild output [cite: 15]
+      });
+    }
+    else {
+      // Skip if this file was already handled by Esbuild (matches an original ENTRY_POINT)
       if (ENTRY_POINTS.includes(relativePath)) {
         return;
       }
-      fs.copyFileSync(src, dest); // [cite: 16]
+      fs.copyFileSync(src, dest);
     }
   }
 
   console.log('📂 Synchronizing HTML/CSS/Manifest static assets...');
   copyStaticFiles(srcDir, distDir);
 
-  console.log('✨ Firefox Addon built successfully! Load the "/dist" directory in Firefox to test.'); // [cite: 17]
+  console.log('✨ Firefox Addon built successfully!');
 }
