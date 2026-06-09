@@ -17,6 +17,12 @@ You can download, clone, or view the complete source code for this application h
 
 Below is a list of all public functions found inside the `src` directory:
 
+### 📄 File: `src/buildStaticOptions.js`
+```javascript
+export async function buildStaticOptions(userSettingsPath, outputDir = './dist') {  }
+
+```
+
 ### 📄 File: `src/esbuildAddon.js`
 ```javascript
 export function buildAddon({  }

@@ -1,0 +1,104 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+/**
+ * Build-time generator that dynamically reads userSettings.js
+ * 动态读取 userSettings.js 的构建时生成器
+ * @param {string} userSettingsPath - Path to the userSettings.js file / userSettings.js 文件的路径
+ * @param {string} outputDir - Directory to output options.html/js / 输出 options.html/js 的目录
+ */
+export async function buildStaticOptions(userSettingsPath, outputDir = './dist') {
+  // 1. Dynamic Import: Load userSettings from your project file / 动态导入：从您的项目文件加载 userSettings
+  const absolutePath = path.resolve(process.cwd(), userSettingsPath);
+  const module = await import(pathToFileURL(absolutePath).href);
+  const userSettings = module.userSettings;
+
+  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+
+  // 2. Generate HTML / 生成 HTML
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body>
+    <div id="app">${generateHtmlMarkup(userSettings)}</div>
+    <script src="options.js" type="module"></script>
+</body>
+</html>`;
+  fs.writeFileSync(path.join(outputDir, 'options.html'), htmlContent);
+
+  // 3. Generate JS / 生成 JS
+  const jsContent = generateBindingLogic(userSettings);
+  fs.writeFileSync(path.join(outputDir, 'options.js'), jsContent);
+
+  console.log(`✅ Successfully generated from ${userSettingsPath} / 已根据 ${userSettingsPath} 成功生成文件`);
+}
+
+function generateHtmlMarkup(settings) {
+  return Object.keys(settings).map(key => {
+    const config = settings[key];
+    const type = config.type || 'text';
+    let inputs;
+
+    if (type === 'checkbox' || type === 'radio') {
+      inputs = (config.options || []).map(opt => `
+                <label>
+                    <input type="${type}" name="${key}" value="${opt}"> ${opt}
+                </label>
+            `).join('');
+    } else if (type === 'button') {
+      inputs = `<button id="btn_${key}">Click</button>`;
+    } else if (type === 'span') {
+      inputs = `<span id="val_${key}"></span>`;
+    } else {
+      inputs = `<input type="${type}" name="${key}" id="input_${key}">`;
+    }
+    return `<fieldset id="wrap_${key}"><legend>${key}</legend>${inputs}</fieldset>`;
+  }).join('');
+}
+
+function generateBindingLogic(settings) {
+  return `
+    import { stoOpGet } from './opStorage.js'; 
+
+    async function init() {
+        const schema = ${JSON.stringify(settings)};
+        const keys = Object.keys(schema);
+
+        // Binding logic for callbacks / 绑定回调逻辑
+        keys.forEach((key) => {
+            const elements = document.querySelectorAll('[name="' + key + '"]');
+            const config = schema[key];
+
+            elements.forEach(el => {
+                el.addEventListener('change', async (e) => {
+                    const isRadio = config.type === 'radio';
+                    const actName = isRadio ? 'actOptionPageRadioItemClicked' : 'actOptionPageCheckItemClicked';
+                    
+                    // Callback logic: Send message to background / 回调逻辑：发送消息给后台
+                    await browser.runtime.sendMessage({
+                        act: actName,
+                        radioItem: {
+                            storageKey: key,
+                            option: e.target.value
+                        }
+                    });
+                });
+            });
+        });
+
+        // Initialize values from storage / 从存储初始化值
+        const values = await Promise.all(keys.map(k => stoOpGet(k)));
+        keys.forEach((key, index) => {
+            const val = values[index] ?? schema[key].selected;
+            const elements = document.querySelectorAll('[name="' + key + '"]');
+            elements.forEach(el => {
+                if (el.type === 'checkbox') el.checked = val.includes(el.value);
+                else if (el.type === 'radio') el.checked = (String(el.value) === String(val));
+                else el.value = val;
+            });
+        });
+    }
+    init();
+    `;
+}
