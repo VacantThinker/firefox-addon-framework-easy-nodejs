@@ -39,7 +39,8 @@ export async function buildAddonInitialRuntimeOnMessageFile(options = {}) {
  * @returns {string} Optimized JS file content.
  */
 function generateInitialRuntimeOnMessageContent() {
-  return `import { aCustomActionHandleOnMessage } from './aCustomActionHandleOnMessage.js';
+  return `
+import { aCustomActionHandleOnMessage } from './aCustomActionHandleOnMessage.js';
 import {
   browserNotificationCreate,
   browserTabSendMessage,
@@ -56,6 +57,9 @@ export function initialRuntimeOnMessage() {
     }
 
     const { act, ...rest } = message;
+    if (sender.tab) {
+      Object.assign(rest,{tabId: sender.tab.id});
+    }
 
     switch (act) {
       case 'actLog': {
@@ -83,31 +87,31 @@ export function initialRuntimeOnMessage() {
       }
 
       case 'actNotification': {
-        browserNotificationCreate(rest.content);
+        browserNotificationCreate(rest.content).then()
         sendResponse({ status: 'ok' });
         return false;
       }
 
       case 'actRemoveTab': {
-        tabOpRemove(rest.tabId);
+        tabOpRemove(rest.tabId).then()
         sendResponse({ status: 'ok' });
         return false;
       }
 
       case 'actFocusTab': {
-        tabOpFocus(rest.tabId);
+        tabOpFocus(rest.tabId).then()
         sendResponse({ status: 'ok' });
         return false;
       }
 
       case 'actDownloadFile': {
-        serviceDownloadByDownlink(rest);
+        serviceDownloadByDownlink(rest).then()
         sendResponse({ status: 'ok' });
         return false;
       }
 
-      case 'actSendMessageToTab': {
-        browserTabSendMessage(rest.tabId, rest);
+      case 'actSendMessageToCurrentTab': {
+        browserTabSendMessage(rest.tabId, rest).then()
         sendResponse({ status: 'ok' });
         return false;
       }
@@ -115,7 +119,7 @@ export function initialRuntimeOnMessage() {
       default: {
         // Pass unrecognized actions to the custom handler
         const isAsync = aCustomActionHandleOnMessage(act, rest, sendResponse);
-        
+
         // In extension messaging, return true ONLY if the response is sent asynchronously.
         // If the custom handler returns true, it keeps the message channel open.
         return isAsync === true;
@@ -123,5 +127,6 @@ export function initialRuntimeOnMessage() {
     }
   });
 }
+
 `;
 }
