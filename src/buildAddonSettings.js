@@ -5,10 +5,12 @@ import path from 'node:path';
  * Generates the UI files (options.html, options.js) for the extension.
  * @param {Object} options
  * @param {string} [options.inputPath] - Path to userSettings.json.
+ * @param {string} [options.manifestPath] - Path to manifest.json.
  * @param {string} [options.outDir] - Output directory for UI files.
  */
 export async function buildAddonOptionsUIFile(options = {}) {
   const inputPath = options.inputPath || path.resolve(process.cwd(), 'addons/userSettings.json');
+  const manifestPath = options.manifestPath || path.resolve(process.cwd(), 'addons/manifest.json');
   // Default UI output directory: addons/options
   const outDir = options.outDir || path.resolve(process.cwd(), 'addons/options');
 
@@ -16,11 +18,20 @@ export async function buildAddonOptionsUIFile(options = {}) {
     const data = await fs.readFile(inputPath, 'utf8');
     const userSettings = JSON.parse(data);
 
+    // Read and parse manifest.json to get extension name and description
+    let manifest = { name: 'Extension Options', description: 'Configuration deck.' };
+    try {
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      manifest = JSON.parse(manifestData);
+    } catch (e) {
+      console.warn(`[Framework] ⚠️ Could not read manifest.json at ${manifestPath}, using fallbacks.`);
+    }
+
     await fs.mkdir(outDir, { recursive: true });
 
     await fs.writeFile(
         path.join(outDir, 'options.html'),
-        generateOptionsHtml(userSettings)
+        generateOptionsHtml(userSettings, manifest)
     );
 
     await fs.writeFile(
@@ -129,9 +140,13 @@ export async function serviceGetUserSettings() {
 /**
  * Generates the HTML string for the options page, applying the Matrix-style theme.
  * @param {Object} settings - The user settings schema parsed from JSON.
+ * @param {Object} manifest - The manifest object containing extension details.
  * @returns {string} The complete HTML string.
  */
-function generateOptionsHtml(settings) {
+function generateOptionsHtml(settings, manifest) {
+  const extensionName = manifest.name || 'Extension Options';
+  const extensionDesc = manifest.description || 'Configuration deck for extension parameters.';
+
   let html = `<!DOCTYPE html>
 <html>
 <head>
@@ -139,7 +154,7 @@ function generateOptionsHtml(settings) {
     /* Base Matrix Theme applied to form elements */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      padding: 20px;
+      padding: 12px;
       background-color: #121212;
       color: #00ff00;
       margin: 0;
@@ -149,40 +164,41 @@ function generateOptionsHtml(settings) {
       margin: 0 auto;
     }
     h1 {
-      font-size: 28px;
+      font-size: 24px;
       color: #00ff00;
-      margin-bottom: 10px;
+      margin-top: 0;
+      margin-bottom: 4px;
       font-weight: bold;
     }
     .subtitle {
-      font-size: 16px;
+      font-size: 14px;
       color: #00aa00;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
     }
     /* Form specific styling adapting the provided color palette */
     fieldset {
       border: 1px solid #005500;
-      margin-bottom: 15px;
-      padding: 15px;
+      margin-bottom: 10px;
+      padding: 10px;
       border-radius: 4px;
       background-color: rgba(0, 20, 0, 0.3);
     }
     legend {
       font-weight: bold;
       color: #00ff00;
-      padding: 0 10px;
-      font-size: 15px;
+      padding: 0 6px;
+      font-size: 14px;
     }
     .option-item {
-      margin-bottom: 12px;
-      font-size: 14px;
+      margin-bottom: 8px;
+      font-size: 13px;
       color: #00cc00;
     }
     /* Layout row container for horizontal checkboxes and radio buttons */
     .options-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 20px;
+      gap: 15px;
     }
     .options-row .option-item {
       margin-bottom: 0;
@@ -192,7 +208,7 @@ function generateOptionsHtml(settings) {
       background-color: #1a1a1a;
       border: 1px solid #005500;
       color: #00ff00;
-      padding: 6px 10px;
+      padding: 4px 8px;
       border-radius: 4px;
       font-family: inherit;
     }
@@ -203,7 +219,7 @@ function generateOptionsHtml(settings) {
     /* Checkbox and Radio styling tweaks for dark mode */
     input[type="checkbox"], input[type="radio"] {
       accent-color: #00ff00;
-      margin-right: 8px;
+      margin-right: 6px;
       cursor: pointer;
     }
     label {
@@ -214,11 +230,11 @@ function generateOptionsHtml(settings) {
       background-color: #2a2a2a;
       color: #ffffff;
       border: 1px solid #444444;
-      padding: 6px 14px;
-      font-size: 13px;
+      padding: 4px 12px;
+      font-size: 12px;
       border-radius: 4px;
       cursor: pointer;
-      margin-right: 8px;
+      margin-right: 6px;
       transition: background-color 0.15s ease, border-color 0.15s ease;
     }
     button:hover {
@@ -227,14 +243,14 @@ function generateOptionsHtml(settings) {
     }
     span.display-value {
       color: #008800;
-      font-size: 14px;
+      font-size: 13px;
     }
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>System Configuration</h1>
-  <div class="subtitle">Global configuration deck for extension parameters.</div>
+  <h1>${extensionName}</h1>
+  <div class="subtitle">${extensionDesc}</div>
   <div id="app">
 `;
 

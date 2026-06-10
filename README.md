@@ -17,6 +17,14 @@ You can download, clone, or view the complete source code for this application h
 
 Below is a list of all public functions found inside the `src` directory:
 
+### 📄 File: `src/buildAddonInitial.js`
+```javascript
+export async function buildAddonInitialRuntimeOnMessageFile(options = {  }
+
+export function initialRuntimeOnMessage() {  }
+
+```
+
 ### 📄 File: `src/buildAddonSettings.js`
 ```javascript
 export async function buildAddonOptionsUIFile(options = {  }
