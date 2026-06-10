@@ -52,19 +52,22 @@ export function initialRuntimeOnMessage() {
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Prevent errors if message is null or undefined
     if (!message || !message.act) {
-      return;
+      return false;
     }
 
     const { act, ...rest } = message;
 
     switch (act) {
-      case 'actLog':
+      case 'actLog': {
         console.log('act', act, 'rest', rest);
-        break;
+        sendResponse({ status: 'ok' });
+        return false;
+      }
 
-      case 'actMarco': // Marco Polo pool game
+      case 'actMarco': {
         sendResponse({ status: 'Polo' });
-        break;
+        return false;
+      }
 
       case 'actRequestTabIdTabUrl': {
         const tab = sender.tab;
@@ -76,40 +79,47 @@ export function initialRuntimeOnMessage() {
         } else {
           sendResponse(null);
         }
-        break;
+        return false;
       }
 
-      case 'actNotification':
+      case 'actNotification': {
         browserNotificationCreate(rest.content);
-        break;
+        sendResponse({ status: 'ok' });
+        return false;
+      }
 
-      case 'actRemoveTab':
+      case 'actRemoveTab': {
         tabOpRemove(rest.tabId);
-        break;
+        sendResponse({ status: 'ok' });
+        return false;
+      }
 
-      case 'actFocusTab':
+      case 'actFocusTab': {
         tabOpFocus(rest.tabId);
-        break;
+        sendResponse({ status: 'ok' });
+        return false;
+      }
 
-      case 'actDownloadFile':
+      case 'actDownloadFile': {
         serviceDownloadByDownlink(rest);
-        break;
+        sendResponse({ status: 'ok' });
+        return false;
+      }
 
-      case 'actSendMessageToTab':
+      case 'actSendMessageToTab': {
         browserTabSendMessage(rest.tabId, rest);
-        break;
+        sendResponse({ status: 'ok' });
+        return false;
+      }
 
-      default:
-        // Optional: handle unrecognized internal framework messages
-        break;
-    }
-
-    // Pass down to the custom action handler for extension-specific overrides
-    const handled = aCustomActionHandleOnMessage(act, rest, sendResponse);
-    
-    // Return true if the custom handler returns true to signify asynchronous response
-    if (handled === true) {
-      return true;
+      default: {
+        // Pass unrecognized actions to the custom handler
+        const isAsync = aCustomActionHandleOnMessage(act, rest, sendResponse);
+        
+        // In extension messaging, return true ONLY if the response is sent asynchronously.
+        // If the custom handler returns true, it keeps the message channel open.
+        return isAsync === true;
+      }
     }
   });
 }
