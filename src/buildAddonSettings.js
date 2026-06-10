@@ -61,6 +61,7 @@ export async function buildAddonServiceUserSettingsJSFile(options = {}) {
     console.error(`[Framework] ❌ Failed to build Service file:`, error);
   }
 }
+
 /**
  * Legacy wrapper to run both generators simultaneously if needed.
  */
@@ -127,20 +128,18 @@ export async function serviceGetUserSettings() {
 
 /**
  * Generates the HTML string for the options page, applying the Matrix-style theme.
- * * @param {Object} settings - The user settings schema parsed from JSON.
+ * @param {Object} settings - The user settings schema parsed from JSON.
  * @returns {string} The complete HTML string.
  */
 function generateOptionsHtml(settings) {
   let html = `<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>System Configuration</title>
   <style>
     /* Base Matrix Theme applied to form elements */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      padding: 40px;
+      padding: 20px;
       background-color: #121212;
       color: #00ff00;
       margin: 0;
@@ -158,13 +157,13 @@ function generateOptionsHtml(settings) {
     .subtitle {
       font-size: 16px;
       color: #00aa00;
-      margin-bottom: 35px;
+      margin-bottom: 20px;
     }
     /* Form specific styling adapting the provided color palette */
     fieldset {
       border: 1px solid #005500;
-      margin-bottom: 20px;
-      padding: 20px;
+      margin-bottom: 15px;
+      padding: 15px;
       border-radius: 4px;
       background-color: rgba(0, 20, 0, 0.3);
     }
@@ -178,6 +177,15 @@ function generateOptionsHtml(settings) {
       margin-bottom: 12px;
       font-size: 14px;
       color: #00cc00;
+    }
+    /* Layout row container for horizontal checkboxes and radio buttons */
+    .options-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .options-row .option-item {
+      margin-bottom: 0;
     }
     /* Input fields styling */
     input[type="text"], input[type="number"] {
@@ -238,14 +246,16 @@ function generateOptionsHtml(settings) {
 
     if (type === 'checkbox' || type === 'radio') {
       const options = config.options || [];
+      html += `      <div class="options-row">\n`;
       options.forEach(option => {
         const id = `input-${key}-${option}`;
-        html += `      <div class="option-item">\n`;
-        html += `        <label for="${id}">\n`;
-        html += `          <input type="${type}" id="${id}" name="${key}" value="${option}"> ${option}\n`;
-        html += `        </label>\n`;
-        html += `      </div>\n`;
+        html += `        <div class="option-item">\n`;
+        html += `          <label for="${id}">\n`;
+        html += `            <input type="${type}" id="${id}" name="${key}" value="${option}"> ${option}\n`;
+        html += `          </label>\n`;
+        html += `        </div>\n`;
       });
+      html += `      </div>\n`;
     } else if (type === 'button') {
       html += `      <div class="option-item">\n`;
       html += `        <button type="button" id="btn-${key}"></button>\n`;
