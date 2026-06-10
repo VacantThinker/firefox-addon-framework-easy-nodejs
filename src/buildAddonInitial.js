@@ -40,6 +40,7 @@ export async function buildAddonInitialRuntimeOnMessageFile(options = {}) {
  */
 function generateInitialRuntimeOnMessageContent() {
   return `
+
 import { aCustomActionHandleOnMessage } from './aCustomActionHandleOnMessage.js';
 import {
   browserNotificationCreate,
@@ -104,6 +105,18 @@ export function initialRuntimeOnMessage() {
         return false;
       }
 
+      case 'actFocusCurrentTab': {
+        tabOpFocus(rest.tabId).then()
+        sendResponse({ status: 'ok' });
+        return false;
+      }
+
+      case 'actFocusTargetTab': {
+        tabOpFocus(rest['targetTabId']).then()
+        sendResponse({ status: 'ok' });
+        return false;
+      }
+
       case 'actDownloadFile': {
         serviceDownloadByDownlink(rest).then()
         sendResponse({ status: 'ok' });
@@ -127,6 +140,7 @@ export function initialRuntimeOnMessage() {
     }
   });
 }
+
 
 `;
 }
