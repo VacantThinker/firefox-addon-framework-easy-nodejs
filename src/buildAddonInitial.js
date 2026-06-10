@@ -9,7 +9,7 @@ import path from 'node:path';
  */
 export async function buildAddonInitialRuntimeOnMessageFile(options = {}) {
   // Default output directory: addons
-  const outDir = options.outDir || path.resolve(process.cwd(), 'addons');
+  const outDir = options.outDir || path.resolve(process.cwd(), 'addons/src');
   const targetFilePath = path.join(outDir, 'initialRuntimeOnMessage.js');
 
   try {
