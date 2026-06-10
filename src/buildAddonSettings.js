@@ -125,39 +125,145 @@ export async function serviceGetUserSettings() {
 `;
 }
 
+/**
+ * Generates the HTML string for the options page, applying the Matrix-style theme.
+ * * @param {Object} settings - The user settings schema parsed from JSON.
+ * @returns {string} The complete HTML string.
+ */
 function generateOptionsHtml(settings) {
-  let html = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>Options</title>\n</head>\n<body>\n<div id="app">\n`;
+  let html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>System Configuration</title>
+  <style>
+    /* Base Matrix Theme applied to form elements */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      padding: 40px;
+      background-color: #121212;
+      color: #00ff00;
+      margin: 0;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 28px;
+      color: #00ff00;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: #00aa00;
+      margin-bottom: 35px;
+    }
+    /* Form specific styling adapting the provided color palette */
+    fieldset {
+      border: 1px solid #005500;
+      margin-bottom: 20px;
+      padding: 20px;
+      border-radius: 4px;
+      background-color: rgba(0, 20, 0, 0.3);
+    }
+    legend {
+      font-weight: bold;
+      color: #00ff00;
+      padding: 0 10px;
+      font-size: 15px;
+    }
+    .option-item {
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: #00cc00;
+    }
+    /* Input fields styling */
+    input[type="text"], input[type="number"] {
+      background-color: #1a1a1a;
+      border: 1px solid #005500;
+      color: #00ff00;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+    input[type="text"]:focus, input[type="number"]:focus {
+      outline: none;
+      border-color: #00ff00;
+    }
+    /* Checkbox and Radio styling tweaks for dark mode */
+    input[type="checkbox"], input[type="radio"] {
+      accent-color: #00ff00;
+      margin-right: 8px;
+      cursor: pointer;
+    }
+    label {
+      cursor: pointer;
+    }
+    /* Button styling strictly adhering to the provided CSS */
+    button {
+      background-color: #2a2a2a;
+      color: #ffffff;
+      border: 1px solid #444444;
+      padding: 6px 14px;
+      font-size: 13px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 8px;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+    button:hover {
+      background-color: #3a3a3a;
+      border-color: #00ff00;
+    }
+    span.display-value {
+      color: #008800;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>System Configuration</h1>
+  <div class="subtitle">Global configuration deck for extension parameters.</div>
+  <div id="app">
+`;
 
+  // Iterate over the schema to generate form fields
   for (const [key, config] of Object.entries(settings)) {
     const type = config.type || 'text';
-    html += `  <fieldset id="fieldset-${key}">\n`;
-    html += `    <legend>${key}</legend>\n`;
+    html += `    <fieldset id="fieldset-${key}">\n`;
+    html += `      <legend>${key}</legend>\n`;
 
     if (type === 'checkbox' || type === 'radio') {
       const options = config.options || [];
       options.forEach(option => {
         const id = `input-${key}-${option}`;
-        html += `    <div class="option-item">\n`;
-        html += `      <label for="${id}">\n`;
-        html += `        <input type="${type}" id="${id}" name="${key}" value="${option}"> ${option}\n`;
-        html += `      </label>\n`;
-        html += `    </div>\n`;
+        html += `      <div class="option-item">\n`;
+        html += `        <label for="${id}">\n`;
+        html += `          <input type="${type}" id="${id}" name="${key}" value="${option}"> ${option}\n`;
+        html += `        </label>\n`;
+        html += `      </div>\n`;
       });
-    }
-    else if (type === 'button') {
-      html += `    <button type="button" id="btn-${key}"></button>\n`;
-    }
-    else if (type === 'number' || type === 'text') {
-      html += `    <input type="${type}" id="input-${key}" name="${key}">\n`;
-    }
-    else if (type === 'span') {
-      html += `    <span id="span-${key}"></span>\n`;
+    } else if (type === 'button') {
+      html += `      <div class="option-item">\n`;
+      html += `        <button type="button" id="btn-${key}"></button>\n`;
+      html += `      </div>\n`;
+    } else if (type === 'number' || type === 'text') {
+      html += `      <div class="option-item">\n`;
+      html += `        <input type="${type}" id="input-${key}" name="${key}">\n`;
+      html += `      </div>\n`;
+    } else if (type === 'span') {
+      html += `      <div class="option-item">\n`;
+      html += `        <span id="span-${key}" class="display-value"></span>\n`;
+      html += `      </div>\n`;
     }
 
-    html += `  </fieldset>\n`;
+    html += `    </fieldset>\n`;
   }
 
-  html += `</div>\n<script src="options.js" type="module"></script>\n</body>\n</html>`;
+  html += `  </div>\n</div>\n<script src="options.js" type="module"></script>\n</body>\n</html>`;
   return html;
 }
 
