@@ -23,9 +23,12 @@ export async function buildAddon(
   const srcDir = path.join(process.cwd(), 'addons');
   const distDir = path.join(process.cwd(), 'dist');
 
+  // Normalize paths to ensure cross-platform compatibility (e.g., Windows '\\' to '/')
+  const normalizePath = (p) => p.replace(/\\/g, '/');
+
   // 2. Determine Entry Points & Exclude List
-  let ENTRY_POINTS = [...inputEntryPoints];
-  let EXCLUDE_LIST = [...inputExcludeList];
+  let ENTRY_POINTS = inputEntryPoints.map(normalizePath);
+  let EXCLUDE_LIST = inputExcludeList.map(normalizePath);
 
   if (EXCLUDE_LIST.length === 0) {
     EXCLUDE_LIST = ['src', 'userSettings.json'];
@@ -62,21 +65,25 @@ export async function buildAddon(
       ENTRY_POINTS = ENTRY_POINTS.concat(pageFiles);
     }
 
-    // TODO: Add other future default entry points here.
     console.log(`✨ Found ${ENTRY_POINTS.length} default entry points:`, ENTRY_POINTS);
   }
 
-  // 3. Clear the old dist directory
+  // 3. Unify Exclusions (Crucial step: Add entry points to exclude list)
+  // This prevents the static file copier from overwriting the esbuild bundles with raw source files.
+  EXCLUDE_LIST = [...new Set([...EXCLUDE_LIST, ...ENTRY_POINTS])];
+
+  // 4. Clear the old dist directory
   if (fs.existsSync(distDir)) {
     console.log('🗑️  Clearing old dist directory...');
     fs.rmSync(distDir, { recursive: true, force: true });
   }
   fs.mkdirSync(distDir, { recursive: true });
 
-  // 4. Filter valid Entry Points
+  // 5. Filter valid Entry Points
   const validEntryPoints = [];
 
   ENTRY_POINTS.forEach(entry => {
+    // Join with standard path resolving
     const fullPath = path.join(srcDir, entry);
     if (fs.existsSync(fullPath)) {
       validEntryPoints.push(fullPath);
@@ -85,7 +92,7 @@ export async function buildAddon(
     }
   });
 
-  // 5. Run Esbuild
+  // 6. Run Esbuild
   if (validEntryPoints.length > 0) {
     console.log('📦 Bundling TypeScript/JavaScript modules with esbuild...');
     esbuild.buildSync({
@@ -94,6 +101,7 @@ export async function buildAddon(
       minify: minify,
       sourcemap: sourcemap,
       outdir: distDir,
+      outbase: srcDir, // CRITICAL FIX: Preserves strict folder structure even if all entry points are deep in subfolders
       target: ['firefox100'],
       format: 'esm',
     });
@@ -101,7 +109,7 @@ export async function buildAddon(
     console.log('⏭️  No valid ENTRY_POINTS found. Skipping Esbuild bundling...');
   }
 
-  // 6. Recursively copy and optionally minify non-JS/TS static assets
+  // 7. Recursively copy and optionally minify non-JS/TS static assets
   async function copyStaticFiles(src, dest) {
     const exists = fs.existsSync(src);
     if (!exists) return;
@@ -109,10 +117,10 @@ export async function buildAddon(
     const stats = fs.statSync(src);
     const isDirectory = stats.isDirectory();
 
-    const relativePath = path.relative(srcDir, src).replace(/\\/g, '/');
+    const relativePath = normalizePath(path.relative(srcDir, src));
     const topLevelName = relativePath.split('/')[0];
 
-    // Exclude logic
+    // Unified Exclude logic (Now includes ENTRY_POINTS automatically)
     if (relativePath && (EXCLUDE_LIST.includes(relativePath) || EXCLUDE_LIST.includes(topLevelName))) {
       return;
     }
@@ -120,7 +128,6 @@ export async function buildAddon(
     if (isDirectory) {
       if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
       const items = fs.readdirSync(src);
-      // Use for...of to handle async/await properly in loops
       for (const childItemName of items) {
         await copyStaticFiles(
           path.join(src, childItemName),
@@ -128,13 +135,8 @@ export async function buildAddon(
         );
       }
     } else {
-      // Do not copy raw TS files to dist
+      // Still prevent copying raw uncompiled TS files globally
       if (src.endsWith('.ts') || src.endsWith('.tsx')) {
-        return;
-      }
-
-      // Do not copy JS files that have already been bundled by esbuild
-      if (ENTRY_POINTS.includes(relativePath)) {
         return;
       }
 
@@ -152,12 +154,11 @@ export async function buildAddon(
         } else if (src.endsWith('.html') || src.endsWith('.htm')) {
           try {
             const content = fs.readFileSync(src, 'utf-8');
-            // Use professional HTML minifier
             const minifiedHTML = await minifyHtml(content, {
               collapseWhitespace: true,
               removeComments: true,
-              minifyCSS: true, // Compress inline CSS (<style>)
-              minifyJS: true,  // Compress inline JS (<script>)
+              minifyCSS: true,
+              minifyJS: true,
               removeRedundantAttributes: true,
               removeScriptTypeAttributes: true,
               removeStyleLinkTypeAttributes: true,
