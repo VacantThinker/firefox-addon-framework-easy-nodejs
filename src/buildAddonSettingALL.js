@@ -76,7 +76,7 @@ export async function buildAddonServiceUserSettingsJSFile(options = {}) {
 /**
  * Legacy wrapper to run both generators simultaneously if needed.
  */
-export async function buildAddonSettings(options = {}) {
+export async function buildAddonSettingALL(options = {}) {
   await Promise.all([
     buildAddonOptionsUIFile(options),
     buildAddonServiceUserSettingsJSFile(options)
