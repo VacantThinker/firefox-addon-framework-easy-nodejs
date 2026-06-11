@@ -38,28 +38,27 @@ export function buildAddon({
     else {
       console.error(
           `⚠️  Warning: Entry point file not found and will be skipped: "${entry}"`);
-      console.error(
-          `   Check the file exists at: ${fullPath} or remove it from your ENTRY_POINTS configuration.`);
     }
   });
 
-  // 4. Run Esbuild only if we have valid files
+  // 4. Run Esbuild
   if (validEntryPoints.length > 0) {
-    console.log('⚡ Bundling JavaScript modules...');
+    console.log('⚡ Bundling TypeScript/JavaScript modules...');
     esbuild.buildSync({
-      entryPoints: validEntryPoints, // Using the filtered list
+      entryPoints: validEntryPoints,
       bundle: true,
       minify: minify,
       sourcemap: sourcemap,
       outdir: distDir,
       target: ['firefox100'],
+      format: 'esm',
     });
   }
   else {
     console.log('⚡ No valid ENTRY_POINTS found. Skipping Esbuild bundling...');
   }
 
-  // 5. Recursively copy non-JS static assets
+  // 5. Recursively copy non-JS/TS static assets
   function copyStaticFiles(
       src,
       dest,
@@ -89,10 +88,14 @@ export function buildAddon({
       });
     }
     else {
-      // Skip if this file was already handled by Esbuild (matches an original ENTRY_POINT)
+      if (src.endsWith('.ts') || src.endsWith('.tsx')) {
+        return;
+      }
+
       if (ENTRY_POINTS.includes(relativePath)) {
         return;
       }
+
       fs.copyFileSync(src, dest);
     }
   }
