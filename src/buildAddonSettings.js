@@ -89,6 +89,7 @@ function generateServiceUserSettings(settings) {
   const defaultValues = {};
   const keys = Object.keys(settings);
   const typeLines = [];
+  const individualGetters = [];
 
   for (const [key, config] of Object.entries(settings)) {
     defaultValues[key] = config.selected;
@@ -101,6 +102,15 @@ function generateServiceUserSettings(settings) {
     else jsdocType = typeof config.selected;
 
     typeLines.push(` * ${key}: ${jsdocType}`);
+
+    // Generate individual getter method string
+    const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1);
+    individualGetters.push(`/**
+ * * @return {Promise<${jsdocType}|null>}
+ */
+export async function serviceGetUserSetting${capitalizedKey}() {
+  return await stoOpGet("${key}");
+}`);
   }
 
   const formattedJSDocType = `{\n${typeLines.join(',\n')}\n * }`;
@@ -126,7 +136,7 @@ export async function serviceInitUserSettings() {
  * Retrieves the current user settings object.
  * @returns {Promise<${formattedJSDocType}>}
  */
-export async function serviceGetUserSettings() {
+export async function serviceGetUserSettingALL() {
   const keys = ${JSON.stringify(keys)};
   const red = {};
   for (let k of keys) {
@@ -134,6 +144,8 @@ export async function serviceGetUserSettings() {
   }
   return red;
 }
+
+${individualGetters.join('\n\n')}
 `;
 }
 

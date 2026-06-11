@@ -33,9 +33,11 @@ export async function buildAddonServiceUserSettingsJSFile(options = {  }
 
 export async function buildAddonSettings(options = {  }
 
+export async function serviceGetUserSetting${  }
+
 export async function serviceInitUserSettings() {  }
 
-export async function serviceGetUserSettings() {  }
+export async function serviceGetUserSettingALL() {  }
 
 ```
 
