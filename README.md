@@ -25,6 +25,12 @@ export function initialRuntimeOnMessage() {  }
 
 ```
 
+### 📄 File: `src/buildAddon.js`
+```javascript
+export async function buildAddon({  }
+
+```
+
 ### 📄 File: `src/buildAddonSettingALL.js`
 ```javascript
 export async function buildAddonOptionsUIFile(options = {  }
@@ -38,13 +44,6 @@ export async function serviceGetUserSetting${  }
 export async function serviceInitUserSettings() {  }
 
 export async function serviceGetUserSettingALL() {  }
-
-```
-
-### 📄 File: `src/esbuildAddon.js`
-```javascript
-export async function buildAddon(
-  {  }
 
 ```
 
