@@ -43,7 +43,7 @@ export async function serviceGetUserSettingALL() {  }
 
 ### 📄 File: `src/esbuildAddon.js`
 ```javascript
-export function buildAddon(
+export async function buildAddon(
   {  }
 
 ```

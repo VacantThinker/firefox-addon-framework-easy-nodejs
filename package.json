@@ -1,6 +1,6 @@
 {
   "name": "@vacantthinker/firefox-addon-framework-easy-nodejs",
-  "version": "2026.0611.2337",
+  "version": "2026.0612.0048",
   "description": "",
   "main": "index.js",
   "type": "module",
@@ -25,5 +25,8 @@
   "bugs": {
     "url": "https://github.com/VacantThinker/firefox-addon-framework-easy-nodejs/issues"
   },
-  "homepage": "https://github.com/VacantThinker/firefox-addon-framework-easy-nodejs#readme"
+  "homepage": "https://github.com/VacantThinker/firefox-addon-framework-easy-nodejs#readme",
+  "devDependencies": {
+    "html-minifier-terser": "^7.2.0"
+  }
 }

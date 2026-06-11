@@ -9,39 +9,49 @@ import path from 'node:path';
  * @param {string} [options.outDir] - Output directory for UI files.
  */
 export async function buildAddonOptionsUIFile(options = {}) {
-  const inputPath = options.inputPath || path.resolve(process.cwd(), 'addons/userSettings.json');
-  const manifestPath = options.manifestPath || path.resolve(process.cwd(), 'addons/manifest.json');
+  const inputPath = options.inputPath ||
+    path.resolve(process.cwd(), 'addons/userSettings.json');
+  const manifestPath = options.manifestPath ||
+    path.resolve(process.cwd(), 'addons/manifest.json');
   // Default UI output directory: addons/options
-  const outDir = options.outDir || path.resolve(process.cwd(), 'addons/options');
+  const outDir = options.outDir ||
+    path.resolve(process.cwd(), 'addons/pages');
 
   try {
     const data = await fs.readFile(inputPath, 'utf8');
     const userSettings = JSON.parse(data);
 
     // Read and parse manifest.json to get extension name and description
-    let manifest = { name: 'Extension Options', description: 'Configuration deck.' };
+    let manifest = {
+      name: 'Extension Options',
+      description: 'Configuration deck.',
+    };
     try {
-      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifestData = await fs.readFile(
+        manifestPath, 'utf8');
       manifest = JSON.parse(manifestData);
     } catch (e) {
-      console.warn(`[Framework] ⚠️ Could not read manifest.json at ${manifestPath}, using fallbacks.`);
+      console.warn(
+        `[Framework] ⚠️ Could not read manifest.json at ${manifestPath}, using fallbacks.`);
     }
 
-    await fs.mkdir(outDir, { recursive: true });
+    await fs.mkdir(outDir, {recursive: true});
 
     await fs.writeFile(
-        path.join(outDir, 'options.html'),
-        generateOptionsHtml(userSettings, manifest)
+      path.join(outDir, 'options.html'),
+      generateOptionsHtml(userSettings, manifest),
     );
 
     await fs.writeFile(
-        path.join(outDir, 'options.js'),
-        generateOptionsJs(userSettings)
+      path.join(outDir, 'options.js'),
+      generateOptionsJs(userSettings),
     );
 
-    console.log(`[Framework] ✅ Successfully built UI files to ${outDir}`);
+    console.log(
+      `[Framework] ✅ Successfully built UI files to ${outDir}`);
   } catch (error) {
-    console.error(`[Framework] ❌ Failed to build UI files:`, error);
+    console.error(
+      `[Framework] ❌ Failed to build UI files:`, error);
   }
 }
 
@@ -52,24 +62,28 @@ export async function buildAddonOptionsUIFile(options = {}) {
  * @param {string} [options.outDir] - Output directory for the service file.
  */
 export async function buildAddonServiceUserSettingsJSFile(options = {}) {
-  const inputPath = options.inputPath || path.resolve(process.cwd(), 'addons/userSettings.json');
+  const inputPath = options.inputPath ||
+    path.resolve(process.cwd(), 'addons/userSettings.json');
   // Default Service output directory: addons/src
-  const outDir = options.outDir || path.resolve(process.cwd(), 'addons/src');
+  const outDir = options.outDir ||
+    path.resolve(process.cwd(), 'addons/src');
 
   try {
     const data = await fs.readFile(inputPath, 'utf8');
     const userSettings = JSON.parse(data);
 
-    await fs.mkdir(outDir, { recursive: true });
+    await fs.mkdir(outDir, {recursive: true});
 
     await fs.writeFile(
-        path.join(outDir, 'serviceUserSettings.js'),
-        generateServiceUserSettings(userSettings)
+      path.join(outDir, 'serviceUserSettings.js'),
+      generateServiceUserSettings(userSettings),
     );
 
-    console.log(`[Framework] ✅ Successfully built Service file to ${outDir}`);
+    console.log(
+      `[Framework] ✅ Successfully built Service file to ${outDir}`);
   } catch (error) {
-    console.error(`[Framework] ❌ Failed to build Service file:`, error);
+    console.error(
+      `[Framework] ❌ Failed to build Service file:`, error);
   }
 }
 
@@ -79,7 +93,7 @@ export async function buildAddonServiceUserSettingsJSFile(options = {}) {
 export async function buildAddonSettingALL(options = {}) {
   await Promise.all([
     buildAddonOptionsUIFile(options),
-    buildAddonServiceUserSettingsJSFile(options)
+    buildAddonServiceUserSettingsJSFile(options),
   ]);
 }
 
@@ -96,7 +110,8 @@ function generateServiceUserSettings(settings) {
 
     let jsdocType = 'string';
     if (config.type === 'checkbox') jsdocType = 'string[]';
-    else if (config.type === 'radio') jsdocType = typeof config.selected;
+    else if (config.type === 'radio') jsdocType =
+      typeof config.selected;
     else if (config.type === 'number') jsdocType = 'number';
     else if (config.type === 'button') jsdocType = 'boolean';
     else jsdocType = typeof config.selected;
@@ -104,7 +119,8 @@ function generateServiceUserSettings(settings) {
     typeLines.push(` * ${key}: ${jsdocType}`);
 
     // Generate individual getter method string
-    const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1);
+    const capitalizedKey = key.charAt(0).toUpperCase() +
+      key.slice(1);
     individualGetters.push(`/**
  * * @return {Promise<${jsdocType}|null>}
  */
@@ -119,7 +135,8 @@ export async function serviceGetUserSetting${capitalizedKey}() {
 
 export async function serviceInitUserSettings() {
   // Placed inside the function to avoid global scope pollution.
-  const defaultSettings = ${JSON.stringify(defaultValues, null, 2)};
+  const defaultSettings = ${JSON.stringify(
+    defaultValues, null, 2)};
 
   const initPromises = Object.entries(defaultSettings)
       .map(async ([key, defaultValue]) => {
@@ -157,7 +174,8 @@ ${individualGetters.join('\n\n')}
  */
 function generateOptionsHtml(settings, manifest) {
   const extensionName = manifest.name || 'Extension Options';
-  const extensionDesc = manifest.description || 'Configuration deck for extension parameters.';
+  const extensionDesc = manifest.description ||
+    'Configuration deck for extension parameters.';
 
   let html = `<!DOCTYPE html>
 <html>
@@ -279,29 +297,37 @@ function generateOptionsHtml(settings, manifest) {
         const id = `input-${key}-${option}`;
         html += `        <div class="option-item">\n`;
         html += `          <label for="${id}">\n`;
-        html += `            <input type="${type}" id="${id}" name="${key}" value="${option}"> ${option}\n`;
+        html +=
+          `            <input type="${type}" id="${id}" name="${key}" value="${option}"> ${option}\n`;
         html += `          </label>\n`;
         html += `        </div>\n`;
       });
       html += `      </div>\n`;
-    } else if (type === 'button') {
+    }
+    else if (type === 'button') {
       html += `      <div class="option-item">\n`;
-      html += `        <button type="button" id="btn-${key}"></button>\n`;
+      html +=
+        `        <button type="button" id="btn-${key}"></button>\n`;
       html += `      </div>\n`;
-    } else if (type === 'number' || type === 'text') {
+    }
+    else if (type === 'number' || type === 'text') {
       html += `      <div class="option-item">\n`;
-      html += `        <input type="${type}" id="input-${key}" name="${key}">\n`;
+      html +=
+        `        <input type="${type}" id="input-${key}" name="${key}">\n`;
       html += `      </div>\n`;
-    } else if (type === 'span') {
+    }
+    else if (type === 'span') {
       html += `      <div class="option-item">\n`;
-      html += `        <span id="span-${key}" class="display-value"></span>\n`;
+      html +=
+        `        <span id="span-${key}" class="display-value"></span>\n`;
       html += `      </div>\n`;
     }
 
     html += `    </fieldset>\n`;
   }
 
-  html += `  </div>\n</div>\n<script src="options.js" type="module"></script>\n</body>\n</html>`;
+  html +=
+    `  </div>\n</div>\n<script src="options.js" type="module"></script>\n</body>\n</html>`;
   return html;
 }
 
