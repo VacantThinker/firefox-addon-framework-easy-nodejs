@@ -48,7 +48,9 @@ export async function buildAddon({ debug = false } = {}) {
 
     if (isCodeFile) {
       // Only background.js and items under pages/ are entry points
-      if (relativePath === 'background.js' || relativePath.startsWith('pages/')) {
+      if (relativePath === 'background.js' || relativePath.startsWith('pages/')
+        || relativePath.startsWith('contentjs/')
+      ) {
         ENTRY_POINTS.push(fullPath);
       }
       // All raw source files are excluded from static copying
