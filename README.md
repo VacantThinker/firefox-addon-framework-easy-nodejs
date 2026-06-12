@@ -47,6 +47,12 @@ export async function serviceGetUserSettingALL() {  }
 
 ```
 
+### 📄 File: `src/buildAddonTs.js`
+```javascript
+export async function buildAddonTs({  }
+
+```
+
 ### 📄 File: `src/zipFilesOrDirs.js`
 ```javascript
 export function zipFilesOrDirectorys(
