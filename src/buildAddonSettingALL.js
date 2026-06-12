@@ -101,28 +101,32 @@ export async function buildAddonSettingALL(options = {}) {
 
 function generateServiceUserSettings(settings) {
   const defaultValues = {};
-  const keys = Object.keys(settings);
+  const serviceKeys = [];
   const typeLines = [];
   const individualGetters = [];
 
   for (const [key, config] of Object.entries(settings)) {
+    if (config.skipThis === true) {
+      continue;
+    }
+
+    serviceKeys.push(key);
     defaultValues[key] = config.selected;
 
     let jsdocType = 'string';
     if (config.type === 'checkbox') jsdocType = 'string[]';
-    else if (config.type === 'radio') jsdocType =
-      typeof config.selected;
+    else if (config.type === 'radio') jsdocType = typeof config.selected;
     else if (config.type === 'number') jsdocType = 'number';
-    else if (config.type === 'button') jsdocType = 'boolean';
+    else if (config.type === 'toggleButton') jsdocType = 'boolean';
+    else if (config.type === 'buttonToDo') jsdocType = 'string';
     else jsdocType = typeof config.selected;
 
     typeLines.push(` * ${key}: ${jsdocType}`);
 
     // Generate individual getter method string
-    const capitalizedKey = key.charAt(0).toUpperCase() +
-      key.slice(1);
+    const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1);
     individualGetters.push(`/**
- * * @return {Promise<${jsdocType}|null>}
+ * @return {Promise<${jsdocType}|null>}
  */
 export async function serviceGetUserSetting${capitalizedKey}() {
   return await stoOpGet("${key}");
@@ -135,8 +139,7 @@ export async function serviceGetUserSetting${capitalizedKey}() {
 
 export async function serviceInitUserSettings() {
   // Placed inside the function to avoid global scope pollution.
-  const defaultSettings = ${JSON.stringify(
-    defaultValues, null, 2)};
+  const defaultSettings = ${JSON.stringify(defaultValues, null, 2)};
 
   const initPromises = Object.entries(defaultSettings)
       .map(async ([key, defaultValue]) => {
@@ -154,7 +157,7 @@ export async function serviceInitUserSettings() {
  * @returns {Promise<${formattedJSDocType}>}
  */
 export async function serviceGetUserSettingALL() {
-  const keys = ${JSON.stringify(keys)};
+  const keys = ${JSON.stringify(serviceKeys)};
   const red = {};
   for (let k of keys) {
     red[k] = await stoOpGet(k);
@@ -304,7 +307,7 @@ function generateOptionsHtml(settings, manifest) {
       });
       html += `      </div>\n`;
     }
-    else if (type === 'button') {
+    else if (type === 'toggleButton' || type === 'buttonToDo') {
       html += `      <div class="option-item">\n`;
       html +=
         `        <button type="button" id="btn-${key}"></button>\n`;
@@ -361,18 +364,22 @@ function triggerVisibility(sourceKey, currentValue) {
 }
 
 async function initOptions() {
-  const keys = Object.keys(userSettings);
+  const allKeys = Object.keys(userSettings);
   
-  // [Optimization 3] Batch prefetch storage values to prevent async blocking.
-  const valuesArray = await Promise.all(keys.map((key) => stoOpGet(key)));
+  // [Optimization 3] Batch prefetch ONLY storage values (ignore items with skipThis).
+  const storageKeys = allKeys.filter(key => !userSettings[key].skipThis);
+  const valuesArray = await Promise.all(storageKeys.map((key) => stoOpGet(key)));
+  
   const storageData = {};
-  keys.forEach((key, index) => { storageData[key] = valuesArray[index]; });
+  storageKeys.forEach((key, index) => { storageData[key] = valuesArray[index]; });
 
   // Bind events and assign initial values.
-  keys.forEach((storageKey) => {
+  allKeys.forEach((storageKey) => {
     const config = userSettings[storageKey];
     const type = config.type || 'text';
     const storedValue = storageData[storageKey];
+    
+    // If storedValue exists use it; otherwise fallback to config.selected
     const initialValue = storedValue !== undefined && storedValue !== null
       ? storedValue
       : config.selected;
@@ -425,7 +432,7 @@ async function initOptions() {
     }
 
     // --- CONDITION 3: TOGGLE BUTTON ---
-    else if (type === 'button') {
+    else if (type === 'toggleButton') {
       const btn = document.getElementById('btn-' + storageKey);
       let currentStatus = initialValue === true || initialValue === 'true';
       btn.textContent = String(currentStatus);
@@ -438,8 +445,24 @@ async function initOptions() {
       });
       triggerVisibility(storageKey, currentStatus);
     }
+    
+    // --- CONDITION 4: BUTTON TODO ---
+    else if (type === 'buttonToDo') {
+      const btn = document.getElementById('btn-' + storageKey);
+      btn.textContent = String(initialValue);
+      btn.value = String(initialValue);
 
-    // --- CONDITION 4: NUMBER & TEXT INPUTS ---
+      btn.addEventListener('click', async (e) => {
+        const el = e.target;
+        await browser.runtime.sendMessage({
+          act: 'actOptionButtonToDoClicked',
+          itemData: { storageKey, option: el.value }
+        }).catch(() => {});
+      });
+      triggerVisibility(storageKey, initialValue);
+    }
+
+    // --- CONDITION 5: NUMBER & TEXT INPUTS ---
     else if (type === 'number' || type === 'text') {
       const input = document.getElementById('input-' + storageKey);
       input.value = initialValue !== undefined ? initialValue : '';
@@ -457,7 +480,7 @@ async function initOptions() {
       triggerVisibility(storageKey, initialValue);
     }
 
-    // --- CONDITION 5: SPAN ---
+    // --- CONDITION 6: SPAN ---
     else if (type === 'span') {
       const span = document.getElementById('span-' + storageKey);
       span.textContent = String(initialValue);
