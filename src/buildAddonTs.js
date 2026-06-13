@@ -16,28 +16,14 @@ export async function buildAddonTs({ debug = false } = {}) {
 
   const srcDir = path.join(process.cwd(), 'addons');
   const distDir = path.join(process.cwd(), 'dist');
-
-  // Normalize paths for cross-platform compatibility
   const normalizePath = (p) => p.replace(/\\/g, '/');
-
-  // 1. Run formal TypeScript type checking before bundling
-  console.log('Running TypeScript type check (tsc --noEmit)...');
-  try {
-    // This strictly enforces strict rules defined in tsconfig.json
-    execSync('npx tsc --noEmit', { stdio: 'inherit' });
-  } catch (err) {
-    console.error('TypeScript compilation or type safety check failed. Aborting build.');
-    process.exit(1);
-  }
 
   let ENTRY_POINTS = [];
   let EXCLUDE_LIST = ['userSettings.json'];
 
-  // 2. Scan all files recursively to map the structure
   const scanDirectory = (dir) => {
     let results = [];
     if (!fs.existsSync(dir)) return results;
-
     const items = fs.readdirSync(dir, { withFileTypes: true });
     for (const item of items) {
       const fullPath = path.join(dir, item.name);
@@ -52,14 +38,25 @@ export async function buildAddonTs({ debug = false } = {}) {
 
   const allFiles = scanDirectory(srcDir);
 
-  // 3. Classify TS/JS entry points and exclude internal source files
+  const hasTsFiles = allFiles.some(fullPath => /\.(ts|tsx)$/.test(fullPath));
+
+  if (hasTsFiles) {
+    console.log('Running TypeScript type check (tsc --noEmit)...');
+    try {
+      execSync('npx tsc --noEmit', { stdio: 'inherit' });
+    } catch (err) {
+      console.error('TypeScript compilation or type safety check failed. Aborting build.');
+      process.exit(1);
+    }
+  } else {
+    console.log('No TypeScript files detected. Skipping type check.');
+  }
+
   allFiles.forEach(fullPath => {
     const relativePath = normalizePath(path.relative(srcDir, fullPath));
-    // Support both Javascript and TypeScript source files
     const isCodeFile = /\.(js|jsx|ts|tsx)$/.test(relativePath);
 
     if (isCodeFile) {
-      // FIX: Dynamically match background.js or background.ts as root entries
       const isBackground = /^background\.(js|ts)$/.test(relativePath);
       const isPages = relativePath.startsWith('pages/');
       const isContentJs = relativePath.startsWith('contentjs/');
@@ -67,21 +64,18 @@ export async function buildAddonTs({ debug = false } = {}) {
       if (isBackground || isPages || isContentJs) {
         ENTRY_POINTS.push(fullPath);
       }
-      // All raw TS/JS source files must be excluded from static file copying
       EXCLUDE_LIST.push(relativePath);
     }
   });
 
   EXCLUDE_LIST = [...new Set(EXCLUDE_LIST)];
 
-  // 4. Clean up old build artifacts
   if (fs.existsSync(distDir)) {
     console.log('Cleaning old dist directory...');
     fs.rmSync(distDir, { recursive: true, force: true });
   }
   fs.mkdirSync(distDir, { recursive: true });
 
-  // 5. Run Esbuild bundling for TypeScript
   if (ENTRY_POINTS.length > 0) {
     console.log(`Found ${ENTRY_POINTS.length} entry points. Bundling with esbuild...`);
     esbuild.buildSync({
@@ -92,13 +86,12 @@ export async function buildAddonTs({ debug = false } = {}) {
       outdir: distDir,
       outbase: srcDir,
       target: ['firefox100'],
-      format: 'esm', // Keeps the output modules clean and modern
+      format: 'esm',
     });
   } else {
-    console.log('Warning: No valid TypeScript/JavaScript entry points found for bundling.');
+    console.log('No JS/TS entry points found. Proceeding with static assets only.');
   }
 
-  // 6. Sync static assets safely without leaving empty directories
   async function copyStaticFiles(src, dest) {
     if (!fs.existsSync(src)) return;
 
@@ -159,8 +152,8 @@ export async function buildAddonTs({ debug = false } = {}) {
     }
   }
 
+
   console.log('Synchronizing static assets...');
   await copyStaticFiles(srcDir, distDir);
-
   console.log('Firefox Addon TS build completed successfully.');
 }

@@ -3,14 +3,12 @@ import path from 'node:path';
 import archiver from 'archiver';
 
 /**
- * 核心改造：包装成 Promise，交由外部 await 控制流
  */
 export function zipFilesOrDirectorys(
   outputAppendName,
   oneDirectory = null,
   ignoreObj = null,
 ) {
-  // 🔥 1. 返回一个 Promise
   return new Promise((resolve, reject) => {
     const projectRootDir = process.cwd();
     const basename = path.basename(projectRootDir);
@@ -26,13 +24,11 @@ export function zipFilesOrDirectorys(
       zlib: { level: 9 },
     });
 
-    // 🔥 2. 当文件流真正关闭（硬盘写入完成）时，才触发 resolve()
     output.on('close', () => {
       console.info(`${outputAppendName || 'Directory'} zip finished! ${archive.pointer()} total bytes.`);
       resolve();
     });
 
-    // 🔥 3. 发生错误时触发 reject
     archive.on('error', (e) => {
       console.error('Archiver error:', e);
       reject(e);
@@ -71,14 +67,12 @@ export function zipFilesOrDirectorys(
 }
 
 /**
- * 🔥 4. 关键：必须加上 return 关键字！
  */
 export function zipDist() {
   return zipFilesOrDirectorys(null, 'dist');
 }
 
 /**
- * 🔥 5. 关键：必须加上 return 关键字！
  */
 export function zipALL() {
   return zipFilesOrDirectorys(
