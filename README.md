@@ -56,9 +56,9 @@ export async function buildAddonTs({  }
 ### 📄 File: `src/zipFilesOrDirs.js`
 ```javascript
 export function zipFilesOrDirectorys(
-    outputAppendName,
-    oneDirectory = null,
-    ignoreObj = null,
+  outputAppendName,
+  oneDirectory = null,
+  ignoreObj = null,
 ) {  }
 
 export function zipDist() {  }
