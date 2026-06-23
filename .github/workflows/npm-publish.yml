@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
-
+      - run: npx tsc # Verify that the code compiles successfully
   publish-npm:
     needs: build
     runs-on: ubuntu-latest
@@ -31,4 +31,5 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org/
       - run: npm ci
+      - run: npx tsc # Compile JS and .d.ts files for publishing
       - run: npm publish --provenance --access public
