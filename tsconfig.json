@@ -1,24 +1,24 @@
 {
   "compilerOptions": {
+    /* Target Environment (Pure Node.js) */
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022"],                         // Removed DOM and DOM.Iterable
     "types": [
-      "node",
-      "archiver",
-      "html-minifier-terser"
+      "node"
     ],
+    /* Modules & Resolution */
+    "module": "ESNext",
+    "moduleResolution": "bundler",             // Optimized for esbuild path resolution
+    "moduleDetection": "force",                // Treats every file as an isolated ES Module
+    "verbatimModuleSyntax": true,              // Enforces pure ESM rules (requires 'import type' for types)
+
+    /* Strict Type Checking */
     "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+
+    /* Emit Output */
     "rootDir": "./src",
     "outDir": "./dist",
     "declaration": true,
