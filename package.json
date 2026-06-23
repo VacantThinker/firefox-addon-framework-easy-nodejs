@@ -1,6 +1,6 @@
 {
   "name": "@vacantthinker/firefox-addon-framework-easy-nodejs",
-  "version": "2026.0623.2148",
+  "version": "2026.0624.0556",
   "description": "",
   "type": "module",
   "main": "dist/index.js",
@@ -14,14 +14,15 @@
   },
   "scripts": {
     "install_package": "npm install",
-    "build_ts": "tsc"
+    "build_ts": "npx tsc"
   },
   "devDependencies": {
     "@types/node": "^22.20.0",
     "@types/archiver": "^8.0.0",
+    "@types/html-minifier-terser": "7.0.2",
     "archiver": "^8.0.0",
     "esbuild": "^0.28.0",
-    "html-minifier-terser": "^7.2.0",
+    "html-minifier-terser": "^7.0.2",
     "typescript": "6.0.3"
   },
   "repository": {
