@@ -34,7 +34,7 @@ export interface ManifestInput {
 /**
  * Generates the UI files (options.html, options.ts) for the extension.
  */
-export async function buildAddonOptionsUIFile(
+export async function genePagesDirOptionsUIHTMLTS(
   options: BuildSettingOptions = {}): Promise<void> {
   const inputPath: string = options.inputPath ||
     path.resolve(process.cwd(), 'addons/userSettings.json');
@@ -81,7 +81,7 @@ export async function buildAddonOptionsUIFile(
 /**
  * Generates the background service file (serviceUserSettings.ts) for the extension.
  */
-export async function buildAddonServiceUserSettingsFile(
+export async function geneServiceUserSettingsTS(
   options: BuildSettingOptions = {}): Promise<void> {
   const inputPath: string = options.inputPath ||
     path.resolve(process.cwd(), 'addons/userSettings.json');
@@ -110,8 +110,8 @@ export async function buildAddonServiceUserSettingsFile(
  */
 export async function geneUserSettingALL(options: BuildSettingOptions = {}): Promise<void> {
   await Promise.all([
-    buildAddonOptionsUIFile(options),
-    buildAddonServiceUserSettingsFile(options),
+    genePagesDirOptionsUIHTMLTS(options),
+    geneServiceUserSettingsTS(options),
   ]);
 }
 
