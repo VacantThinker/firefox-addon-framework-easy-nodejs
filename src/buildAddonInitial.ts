@@ -1,16 +1,18 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import fs from 'fs/promises';
+import path from 'path';
+
+export interface BuildAddonInitialOptions {
+  outDir?: string;
+}
 
 /**
  * Checks for the existence of initialRuntimeOnMessage.js in the addons directory.
  * If it does not exist, creates it with optimized content; otherwise, skips creation.
- * @param {Object} options
- * @param {string} [options.outDir] - Output directory for the file.
  */
-export async function buildAddonInitialRuntimeOnMessageFile(options = {}) {
+export async function buildAddonInitialRuntimeOnMessageFile(options: BuildAddonInitialOptions = {}): Promise<void> {
   // Default output directory: addons
-  const outDir = options.outDir || path.resolve(process.cwd(), 'addons/src');
-  const targetFilePath = path.join(outDir, 'initialRuntimeOnMessage.js');
+  const outDir: string = options.outDir || path.resolve(process.cwd(), 'addons/src');
+  const targetFilePath: string = path.join(outDir, 'initialRuntimeOnMessage.js');
 
   try {
     // Ensure directory exists
@@ -26,7 +28,7 @@ export async function buildAddonInitialRuntimeOnMessageFile(options = {}) {
       console.log(`[Framework] File does not exist, creating: ${targetFilePath}`);
     }
 
-    const fileContent = generateInitialRuntimeOnMessageContent();
+    const fileContent: string = generateInitialRuntimeOnMessageContent();
     await fs.writeFile(targetFilePath, fileContent, 'utf8');
     console.log(`[Framework] ✅ Successfully created: ${targetFilePath}`);
   } catch (error) {
@@ -36,11 +38,9 @@ export async function buildAddonInitialRuntimeOnMessageFile(options = {}) {
 
 /**
  * Generates the optimized string content for initialRuntimeOnMessage.js.
- * @returns {string} Optimized JS file content.
  */
-function generateInitialRuntimeOnMessageContent() {
+function generateInitialRuntimeOnMessageContent(): string {
   return `
-
 import { aCustomActionHandleOnMessage } from './aCustomActionHandleOnMessage.js';
 import {
   browserNotificationCreate,
@@ -52,14 +52,13 @@ import {
 
 export function initialRuntimeOnMessage() {
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    // Prevent errors if message is null or undefined
     if (!message || !message.act) {
       return false;
     }
 
     const { act, ...rest } = message;
     if (sender.tab) {
-      Object.assign(rest,{tabId: sender.tab.id});
+      Object.assign(rest, { tabId: sender.tab.id });
     }
 
     switch (act) {
@@ -130,17 +129,11 @@ export function initialRuntimeOnMessage() {
       }
 
       default: {
-        // Pass unrecognized actions to the custom handler
         const isAsync = aCustomActionHandleOnMessage(act, rest, sendResponse);
-
-        // In extension messaging, return true ONLY if the response is sent asynchronously.
-        // If the custom handler returns true, it keeps the message channel open.
         return isAsync === true;
       }
     }
   });
 }
-
-
 `;
 }

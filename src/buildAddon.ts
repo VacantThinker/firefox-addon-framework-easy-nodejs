@@ -1,29 +1,34 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { execSync } from 'node:child_process';
+import fs from 'fs';
+import path from 'path';
 import esbuild from 'esbuild';
 import { minify as minifyHtml } from 'html-minifier-terser';
 
+export interface BuildAddonOptions {
+  debug?: boolean;
+}
+
 /**
- * Builds the Firefox Addon with TypeScript support.
+ * Builds the Firefox Addon.
  * Source: addons/ => Target: dist/
- * @param {Object} options
- * @param {boolean} [options.debug=false]
  */
-export async function buildAddonTs({ debug = false } = {}) {
-  const minify = !debug;
-  const sourcemap = debug;
+export async function buildAddon({ debug = false }: BuildAddonOptions = {}): Promise<void> {
+  const minify: boolean = !debug;
+  const sourcemap: boolean = debug;
 
-  const srcDir = path.join(process.cwd(), 'addons');
-  const distDir = path.join(process.cwd(), 'dist');
-  const normalizePath = (p) => p.replace(/\\/g, '/');
+  const srcDir: string = path.join(process.cwd(), 'addons');
+  const distDir: string = path.join(process.cwd(), 'dist');
 
-  let ENTRY_POINTS = [];
-  let EXCLUDE_LIST = ['userSettings.json'];
+  // Normalize paths for cross-platform compatibility
+  const normalizePath = (p: string): string => p.replace(/\\/g, '/');
 
-  const scanDirectory = (dir) => {
-    let results = [];
+  let ENTRY_POINTS: string[] = [];
+  let EXCLUDE_LIST: string[] = ['userSettings.json'];
+
+  // 1. Scan all files recursively to map the structure
+  const scanDirectory = (dir: string): string[] => {
+    let results: string[] = [];
     if (!fs.existsSync(dir)) return results;
+
     const items = fs.readdirSync(dir, { withFileTypes: true });
     for (const item of items) {
       const fullPath = path.join(dir, item.name);
@@ -36,46 +41,33 @@ export async function buildAddonTs({ debug = false } = {}) {
     return results;
   };
 
-  const allFiles = scanDirectory(srcDir);
+  const allFiles: string[] = scanDirectory(srcDir);
 
-  const hasTsFiles = allFiles.some(fullPath => /\.(ts|tsx)$/.test(fullPath));
-
-  if (hasTsFiles) {
-    console.log('Running TypeScript type check (tsc --noEmit)...');
-    try {
-      execSync('npx tsc --noEmit', { stdio: 'inherit' });
-    } catch (err) {
-      console.error('TypeScript compilation or type safety check failed. Aborting build.');
-      process.exit(1);
-    }
-  } else {
-    console.log('No TypeScript files detected. Skipping type check.');
-  }
-
+  // 2. Classify entry points and exclude internal source files
   allFiles.forEach(fullPath => {
-    const relativePath = normalizePath(path.relative(srcDir, fullPath));
-    const isCodeFile = /\.(js|jsx|ts|tsx)$/.test(relativePath);
+    const relativePath: string = normalizePath(path.relative(srcDir, fullPath));
+    const isCodeFile: boolean = /\.(js|ts|tsx)$/.test(relativePath);
 
     if (isCodeFile) {
-      const isBackground = /^background\.(js|ts)$/.test(relativePath);
-      const isPages = relativePath.startsWith('pages/');
-      const isContentJs = relativePath.startsWith('contentjs/');
-
-      if (isBackground || isPages || isContentJs) {
+      // Only background.js and items under pages/ or contentjs/ are entry points
+      if (relativePath === 'background.js' || relativePath.startsWith('pages/') || relativePath.startsWith('contentjs/')) {
         ENTRY_POINTS.push(fullPath);
       }
+      // All raw source files are excluded from static copying
       EXCLUDE_LIST.push(relativePath);
     }
   });
 
   EXCLUDE_LIST = [...new Set(EXCLUDE_LIST)];
 
+  // 3. Clean up old build artifacts
   if (fs.existsSync(distDir)) {
     console.log('Cleaning old dist directory...');
     fs.rmSync(distDir, { recursive: true, force: true });
   }
   fs.mkdirSync(distDir, { recursive: true });
 
+  // 4. Run Esbuild bundling
   if (ENTRY_POINTS.length > 0) {
     console.log(`Found ${ENTRY_POINTS.length} entry points. Bundling with esbuild...`);
     esbuild.buildSync({
@@ -89,10 +81,11 @@ export async function buildAddonTs({ debug = false } = {}) {
       format: 'esm',
     });
   } else {
-    console.log('No JS/TS entry points found. Proceeding with static assets only.');
+    console.log('Warning: No valid entry points found for bundling.');
   }
 
-  async function copyStaticFiles(src, dest) {
+  // 5. Sync static assets safely without leaving empty directories
+  async function copyStaticFiles(src: string, dest: string): Promise<void> {
     if (!fs.existsSync(src)) return;
 
     const stats = fs.statSync(src);
@@ -112,6 +105,7 @@ export async function buildAddonTs({ debug = false } = {}) {
         );
       }
     } else {
+      // Create the destination directory strictly on-demand right before writing an asset file
       const parentDir = path.dirname(dest);
       if (!fs.existsSync(parentDir)) {
         fs.mkdirSync(parentDir, { recursive: true });
@@ -124,7 +118,7 @@ export async function buildAddonTs({ debug = false } = {}) {
             const minifiedJSON = JSON.stringify(JSON.parse(content));
             fs.writeFileSync(dest, minifiedJSON, 'utf-8');
             return;
-          } catch (err) {
+          } catch (err: any) {
             console.error(`Failed to minify JSON: ${relativePath}`, err.message);
           }
         } else if (src.endsWith('.html') || src.endsWith('.htm')) {
@@ -142,7 +136,7 @@ export async function buildAddonTs({ debug = false } = {}) {
             });
             fs.writeFileSync(dest, minifiedHTML, 'utf-8');
             return;
-          } catch (err) {
+          } catch (err: any) {
             console.error(`Failed to minify HTML: ${relativePath}`, err.message);
           }
         }
@@ -152,8 +146,8 @@ export async function buildAddonTs({ debug = false } = {}) {
     }
   }
 
-
   console.log('Synchronizing static assets...');
   await copyStaticFiles(srcDir, distDir);
-  console.log('Firefox Addon TS build completed successfully.');
+
+  console.log('Firefox Addon build completed successfully.');
 }
