@@ -26,7 +26,7 @@ for file in src/*.ts; do
     # Remove the .ts extension
     module_name="${filename%.ts}"
     # Append the export statement to src/index.ts
-    echo "export * from './$module_name';" >> src/index.ts
+    echo "export * from './$module_name.js';" >> src/index.ts
   fi
 done
 
