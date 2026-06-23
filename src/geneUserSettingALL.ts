@@ -5,16 +5,19 @@ export interface VisibilityControl {
   targetField: string;
   expectedValue: string | boolean;
 }
+export type TypeUserSetting=
+  |'radio' | 'checkbox' | 'text' | 'number'
+  | 'button' | 'toggleButton' | 'buttonToDo' | 'span'
 
-export interface SettingItem {
-  type?: 'radio' | 'checkbox' | 'text' | 'number' | 'button' | 'toggleButton' | 'buttonToDo' | 'span';
-  selected?: any;
-  options?: any[];
+export interface UserSettingItem {
+  type: TypeUserSetting;
+  selected?: string[] | string | boolean | number;
+  options?: string[] | number[] | boolean[];
   skipThis?: boolean;
   visibilityControl?: VisibilityControl;
 }
 
-export type UserSettingsInput = Record<string, SettingItem>;
+export type UserSettingsInput = Record<string, UserSettingItem>;
 
 export interface BuildSettingOptions {
   inputPath?: string;
@@ -31,13 +34,14 @@ export interface ManifestInput {
 /**
  * Generates the UI files (options.html, options.ts) for the extension.
  */
-export async function buildAddonOptionsUIFile(options: BuildSettingOptions = {}): Promise<void> {
+export async function buildAddonOptionsUIFile(
+  options: BuildSettingOptions = {}): Promise<void> {
   const inputPath: string = options.inputPath ||
     path.resolve(process.cwd(), 'addons/userSettings.json');
   const manifestPath: string = options.manifestPath ||
     path.resolve(process.cwd(), 'addons/manifest.json');
   const outDir: string = options.outDir ||
-    path.resolve(process.cwd(), 'addons/options');
+    path.resolve(process.cwd(), 'addons/pages');
 
   try {
     const data: string = await fs.readFile(inputPath, 'utf8');
@@ -77,7 +81,8 @@ export async function buildAddonOptionsUIFile(options: BuildSettingOptions = {})
 /**
  * Generates the background service file (serviceUserSettings.ts) for the extension.
  */
-export async function buildAddonServiceUserSettingsFile(options: BuildSettingOptions = {}): Promise<void> {
+export async function buildAddonServiceUserSettingsFile(
+  options: BuildSettingOptions = {}): Promise<void> {
   const inputPath: string = options.inputPath ||
     path.resolve(process.cwd(), 'addons/userSettings.json');
   const outDir: string = options.outDir ||
@@ -103,7 +108,7 @@ export async function buildAddonServiceUserSettingsFile(options: BuildSettingOpt
 /**
  * Wrapper to run both generators simultaneously.
  */
-export async function buildAddonSettingALL(options: BuildSettingOptions = {}): Promise<void> {
+export async function geneUserSettingALL(options: BuildSettingOptions = {}): Promise<void> {
   await Promise.all([
     buildAddonOptionsUIFile(options),
     buildAddonServiceUserSettingsFile(options),
@@ -194,9 +199,12 @@ interface VisibilityControl {
   targetField: keyof UserSettings;
   expectedValue: string | boolean;
 }
+type TypeUserSetting =
+  |'radio' | 'checkbox' | 'text' | 'number'
+  | 'button' | 'toggleButton' | 'buttonToDo' | 'span'
 
 interface BaseSettingConfig {
-  type: 'radio' | 'checkbox' | 'text' | 'number' | 'button' | 'span';
+  type: TypeUserSetting;
   options?: (string | boolean | number)[];
   selected?: string | boolean | string[] | number;
   visibilityControl?: VisibilityControl;
