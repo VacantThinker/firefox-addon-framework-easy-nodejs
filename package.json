@@ -1,6 +1,6 @@
 {
   "name": "@vacantthinker/firefox-addon-framework-easy-nodejs",
-  "version": "2026.0624.0557",
+  "version": "2026.0624.0618",
   "description": "",
   "type": "module",
   "main": "dist/index.js",
@@ -14,7 +14,7 @@
   },
   "scripts": {
     "install_package": "npm install",
-    "build_ts": "npx tsc"
+    "build_ts": "rm -rf dist && npx tsc"
   },
   "devDependencies": {
     "@types/node": "^22.20.0",
