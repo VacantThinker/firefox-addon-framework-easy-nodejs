@@ -142,6 +142,7 @@ function generateServiceUserSettingsTs(settings: UserSettingsInput): string {
     else if (config.type === 'radio') returnType = typeof config.selected;
     else if (config.type === 'number') returnType = 'number';
     else if (config.type === 'toggleButton' || config.type === 'button') returnType = 'boolean';
+    else if (config.type === 'editableArray') returnType = 'string[]';
     else returnType = typeof config.selected;
 
     const capitalizedKey: string = key.charAt(0).toUpperCase() + key.slice(1);
