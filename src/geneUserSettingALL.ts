@@ -5,10 +5,11 @@ export interface VisibilityControl {
   targetField: string;
   expectedValue: string | boolean;
 }
-export type TypeUserSetting=
-  |'radio' | 'checkbox' | 'text' | 'number'
+
+export type TypeUserSetting =
+  | 'radio' | 'checkbox' | 'text' | 'number'
   | 'button' | 'toggleButton' | 'buttonToDo' | 'span'
-|'textarea'
+  | 'textarea'
 
 export interface UserSettingItem {
   type: TypeUserSetting;
@@ -30,11 +31,13 @@ export interface BuildSettingOptions {
 export interface ManifestInput {
   name?: string;
   description?: string;
+
   [key: string]: any;
 }
 
 /**
- * Generates the UI files (options.html, options.ts) for the extension.
+ * Generates the UI files (options.html, options.ts) for the
+ * extension.
  */
 export async function genePagesDirOptionsUIHTMLTS(
   options: BuildSettingOptions = {}): Promise<void> {
@@ -62,7 +65,7 @@ export async function genePagesDirOptionsUIHTMLTS(
       );
     }
 
-    await fs.mkdir(outDir, { recursive: true });
+    await fs.mkdir(outDir, {recursive: true});
 
     await fs.writeFile(
       path.join(outDir, 'options.html'),
@@ -81,7 +84,8 @@ export async function genePagesDirOptionsUIHTMLTS(
 }
 
 /**
- * Generates the background service file (serviceUserSettings.ts) for the extension.
+ * Generates the background service file (serviceUserSettings.ts)
+ * for the extension.
  */
 export async function geneServiceUserSettingsTS(
   options: BuildSettingOptions = {}): Promise<void> {
@@ -94,7 +98,7 @@ export async function geneServiceUserSettingsTS(
     const data: string = await fs.readFile(inputPath, 'utf8');
     const userSettings: UserSettingsInput = JSON.parse(data);
 
-    await fs.mkdir(outDir, { recursive: true });
+    await fs.mkdir(outDir, {recursive: true});
 
     await fs.writeFile(
       path.join(outDir, 'serviceUserSettings.ts'),
@@ -190,7 +194,7 @@ ${individualGetters.join('\n\n')}
 function generateOptionsTs(settings: UserSettingsInput): string {
   const schemaStr: string = JSON.stringify(settings, null, 2);
 
-  return`
+  return `
 import {
   syncStoOpGet,
   syncStoOpSet
@@ -204,6 +208,7 @@ interface VisibilityControl {
 type TypeUserSetting =
   |'radio' | 'checkbox' | 'text' | 'number'
   | 'button' | 'toggleButton' | 'buttonToDo' | 'span'
+  | 'textarea'
 
 interface BaseSettingConfig {
   type: TypeUserSetting;
@@ -590,23 +595,19 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
         html += '        </div>\n';
       });
       html += '      </div>\n';
-    }
-    else if (type === 'toggleButton' || type === 'button' || type === 'buttonToDo') {
+    } else if (type === 'toggleButton' || type === 'button' || type === 'buttonToDo') {
       html += '        <div class="option-item">\n';
       html += '          <button type="button" id="btn-' + key + '"></button>\n';
       html += '        </div>\n';
-    }
-    else if (type === 'number' || type === 'text') {
+    } else if (type === 'number' || type === 'text') {
       html += '        <div class="option-item">\n';
       html += '          <input type="' + type + '" id="input-' + key + '" name="' + key + '">\n';
       html += '        </div>\n';
-    }
-    else if (type === 'span') {
+    } else if (type === 'span') {
       html += '        <div class="option-item">\n';
       html += '          <span id="span-' + key + '" class="display-value"></span>\n';
       html += '        </div>\n';
-    }
-    else if (type === 'textarea') {
+    } else if (type === 'textarea') {
       html += '        <div class="option-item" style="width: 100%;">\n';
       html += '          <div style="display: flex; justify-content: space-between; align-items: center;">\n';
       html += '            <label for="input-' + key + '">List Data</label>\n';
