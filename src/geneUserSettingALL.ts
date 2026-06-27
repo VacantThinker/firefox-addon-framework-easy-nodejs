@@ -18,6 +18,7 @@ export interface UserSettingItem {
   skipThis?: boolean;
   visibilityControl?: VisibilityControl;
   validationRegexSome?: string[];
+  regexSamples?: string[];
 }
 
 export type UserSettingsInput = Record<string, UserSettingItem>;
@@ -217,6 +218,7 @@ interface BaseSettingConfig {
   visibilityControl?: VisibilityControl;
   skipThis?: boolean;
   validationRegexSome?: string[];
+  regexSamples?: string[];
 }
 
 interface RadioSettingConfig extends BaseSettingConfig {
@@ -656,9 +658,9 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
     } else if (type === 'editableArray') {
       html += '        <div class="option-item" style="width: 100%;">\n';
       html += '          <div style="display: flex; justify-content: space-between; align-items: center;">\n';
-      const validationRegexSome = config.validationRegexSome;
-      if (validationRegexSome) {
-        for (let content of validationRegexSome) {
+      const regexSamples = config.regexSamples;
+      if (regexSamples) {
+        for (let content of regexSamples) {
           html += '            <label>' + content + '</label>\n';
         }
       }
