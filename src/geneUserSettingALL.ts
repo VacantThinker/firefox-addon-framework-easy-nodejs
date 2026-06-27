@@ -9,7 +9,7 @@ export interface VisibilityControl {
 export type TypeUserSetting =
   | 'radio' | 'checkbox' | 'text' | 'number'
   | 'button' | 'toggleButton' | 'buttonToDo' | 'span'
-  | 'textarea'
+  | 'editableArray'
 
 export interface UserSettingItem {
   type: TypeUserSetting;
@@ -17,7 +17,7 @@ export interface UserSettingItem {
   options?: string[] | number[] | boolean[];
   skipThis?: boolean;
   visibilityControl?: VisibilityControl;
-  validationRegex?: string; // <-- 加上正則驗證屬性
+  validationRegexOr?: string[];
 }
 
 export type UserSettingsInput = Record<string, UserSettingItem>;
@@ -208,15 +208,15 @@ interface VisibilityControl {
 type TypeUserSetting =
   | 'radio' | 'checkbox' | 'text' | 'number'
   | 'button' | 'toggleButton' | 'buttonToDo' | 'span'
-  | 'textarea'
-
+  | 'editableArray'
+  
 interface BaseSettingConfig {
   type: TypeUserSetting;
   options?: (string | boolean | number)[];
   selected?: string | boolean | string[] | number;
   visibilityControl?: VisibilityControl;
   skipThis?: boolean;
-  validationRegex?: string;
+  validationRegexOr?: string[];
 }
 
 interface RadioSettingConfig extends BaseSettingConfig {
@@ -373,65 +373,111 @@ async function initOptions(): Promise<void> {
       triggerVisibility(storageKey, initialValue);
     }
     
-    else if (type === 'textarea') {
-      const textarea = document.getElementById('input-' + (storageKey as string)) as HTMLTextAreaElement | null;
-      const toggleBtn = document.getElementById('toggle-' + (storageKey as string)) as HTMLButtonElement | null;
-      const errorMsg = document.getElementById('error-' + (storageKey as string)) as HTMLDivElement | null;
+    // 在 else if (type === 'textarea') 的區塊後面加上：
+
+    else if (type === 'editableArray') {
+      const toggleBtn = document.getElementById('toggle-' + (storageKey as string));
+      const container = document.getElementById('container-' + (storageKey as string));
+      const inputEl = document.getElementById('input-' + (storageKey as string)) as HTMLInputElement | null;
+      const clearBtn = document.getElementById('clear-' + (storageKey as string));
+      const addBtn = document.getElementById('add-' + (storageKey as string));
+      const errorEl = document.getElementById('error-' + (storageKey as string));
+      const listEl = document.getElementById('list-' + (storageKey as string));
+
+      if (!container || !inputEl || !listEl || !addBtn) return;
+
+      // 確保資料是陣列
+      let currentArray: string[] = Array.isArray(initialValue) ? [...initialValue] : [];
       
-      if (!textarea) return;
+      // 準備 Regex 陣列
+      const regexStrings = config.validationRegexOr || [];
+      const regexes = regexStrings.map(rStr => new RegExp(rStr));
 
-      textarea.value = initialValue !== undefined && initialValue !== null ? String(initialValue) : '';
-
+      // 展開/收起邏輯
       if (toggleBtn) {
+        let isExpanded = false; // 預設收起
         toggleBtn.addEventListener('click', () => {
-          if (textarea.classList.contains('collapsed')) {
-            textarea.classList.remove('collapsed');
-            textarea.classList.add('expanded');
-            toggleBtn.textContent = 'Collapse';
-          } else {
-            textarea.classList.remove('expanded');
-            textarea.classList.add('collapsed');
-            toggleBtn.textContent = 'Expand';
-          }
+          isExpanded = !isExpanded;
+          container.style.display = isExpanded ? 'block' : 'none';
+          toggleBtn.textContent = isExpanded ? '(Collapse)' : '(Expand)';
         });
       }
 
-      const regexStr = config.validationRegex;
-      let regex: RegExp | null = null;
-      if (regexStr) {
-         try { regex = new RegExp(regexStr); } catch(e) {}
+      // 渲染列表的函數
+      const renderList = () => {
+        listEl.innerHTML = '';
+        currentArray.forEach((item, index) => {
+          const li = document.createElement('li');
+          li.className = 'editable-array-item';
+          
+          const textSpan = document.createElement('span');
+          textSpan.textContent = item;
+          textSpan.title = item;
+          
+          const rmBtn = document.createElement('button');
+          rmBtn.type = 'button';
+          rmBtn.className = 'remove-btn';
+          rmBtn.textContent = '❌'; // 或是寫 Remove
+          rmBtn.setAttribute('data-index', String(index));
+
+          li.appendChild(textSpan);
+          li.appendChild(rmBtn);
+          listEl.appendChild(li);
+        });
+
+        // 綁定刪除按鈕事件
+        const removeBtns = listEl.querySelectorAll('.remove-btn');
+        removeBtns.forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const target = e.currentTarget as HTMLButtonElement;
+            const idx = parseInt(target.getAttribute('data-index') || '0', 10);
+            currentArray.splice(idx, 1); // 刪除該項目
+            await syncStoOpSet(storageKey as string, currentArray);
+            renderList(); // 重新渲染
+          });
+        });
+      };
+
+      // 初始渲染
+      renderList();
+
+      // 清除按鈕
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          inputEl.value = '';
+          if (errorEl) errorEl.style.display = 'none';
+          inputEl.style.borderColor = '#005500';
+        });
       }
 
-      const debouncedSave = debounce(async (val: string) => {
-        await syncStoOpSet(storageKey as string, val);
-      }, 500);
+      // 新增按鈕
+      addBtn.addEventListener('click', async () => {
+        const val = inputEl.value.trim();
+        if (!val) return;
 
-      textarea.addEventListener('input', (e) => {
-        const target = e.currentTarget as HTMLTextAreaElement;
-        const rawValue = target.value;
-
-        let isValid = true;
-        if (regex && rawValue.trim() !== '') {
-           const lines = rawValue.split('\\\\n');
-           isValid = lines.every(line => {
-             const trimmedLine = line.trim();
-             return trimmedLine === '' || regex!.test(trimmedLine); 
-           });
-        }
+        // 驗證邏輯：如果沒有設定 Regex 就全過，否則必須至少符合其中一個 (OR)
+        const isValid = regexes.length === 0 ? true : regexes.some(r => r.test(val));
 
         if (!isValid) {
-           textarea.style.borderColor = '#ff5555';
-           if(errorMsg) errorMsg.style.display = 'block';
-           return;
-        } else {
-           textarea.style.borderColor = '#005500';
-           if(errorMsg) errorMsg.style.display = 'none';
+          if (errorEl) errorEl.style.display = 'block';
+          inputEl.style.borderColor = '#ff5555';
+          return;
         }
 
-        debouncedSave(rawValue);
-        triggerVisibility(storageKey, rawValue);
+        // 驗證成功
+        if (errorEl) errorEl.style.display = 'none';
+        inputEl.style.borderColor = '#005500';
+
+        // 避免重複加入
+        if (!currentArray.includes(val)) {
+          currentArray.push(val);
+          await syncStoOpSet(storageKey as string, currentArray);
+          renderList();
+        }
+        
+        // 加入成功後清空輸入框
+        inputEl.value = ''; 
       });
-      triggerVisibility(storageKey, initialValue);
     }
   });
 }
@@ -534,37 +580,55 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
     '      font-size: 13px;\n' +
     '      color: #008800;\n' +
     '    }\n' +
-    '    textarea {\n' +
-    '      width: 100%;\n' +
-    '      background-color: #1a1a1a;\n' +
-    '      border: 1px solid #005500;\n' +
-    '      color: #00ff00;\n' +
-    '      padding: 8px;\n' +
+
+    '    .editable-array-container {\n' +
+    '      margin-top: 8px;\n' +
+    '    }\n' +
+    '    .input-row {\n' +
+    '      display: flex;\n' +
+    '      gap: 8px;\n' +
+    '      margin-bottom: 8px;\n' +
+    '    }\n' +
+    '    .input-row input {\n' +
+    '      flex: 1;\n' +
+    '    }\n' +
+    '    ul.editable-array-list {\n' +
+    '      list-style: none;\n' +
+    '      padding: 0;\n' +
+    '      margin: 0;\n' +
+    '      max-height: 300px;\n' +
+    '      overflow-y: auto;\n' +
+    '      border: 1px solid #003300;\n' +
     '      border-radius: 4px;\n' +
-    '      font-family: inherit;\n' +
-    '      resize: vertical;\n' +
-    '      box-sizing: border-box;\n' +
-    '      transition: height 0.2s ease;\n' +
-    '      white-space: pre;\n' +
-    '      overflow-wrap: normal;\n' +
-    '      overflow-x: auto;\n' +
     '    }\n' +
-    '    textarea:focus {\n' +
-    '      outline: none;\n' +
-    '      border-color: #00ff00;\n' +
+    '    .editable-array-item {\n' +
+    '      display: flex;\n' +
+    '      justify-content: space-between;\n' +
+    '      align-items: center;\n' +
+    '      padding: 6px 8px;\n' +
+    '      border-bottom: 1px solid #003300;\n' +
+    '      font-size: 13px;\n' +
+    '      color: #00cc00;\n' +
+    '      word-break: break-all;\n' +
     '    }\n' +
-    '    textarea.collapsed {\n' +
-    '      height: 80px;\n' +
+    '    .editable-array-item:last-child {\n' +
+    '      border-bottom: none;\n' +
     '    }\n' +
-    '    textarea.expanded {\n' +
-    '      height: 350px;\n' +
+    '    .editable-array-item:hover {\n' +
+    '      background-color: rgba(0, 50, 0, 0.4);\n' +
     '    }\n' +
-    '    .toggle-btn {\n' +
-    '      margin-bottom: 6px;\n' +
+    '    .remove-btn {\n' +
     '      background-color: transparent;\n' +
-    '      border: 1px solid #005500;\n' +
-    '      color: #00aa00;\n' +
+    '      border: 1px solid #550000;\n' +
+    '      color: #ff5555;\n' +
+    '      padding: 2px 6px;\n' +
+    '      margin-left: 8px;\n' +
     '    }\n' +
+    '    .remove-btn:hover {\n' +
+    '      background-color: #550000;\n' +
+    '      border-color: #ff5555;\n' +
+    '    }\n' +
+
     '  </style>\n' +
     '</head>\n' +
     '<body>\n' +
@@ -590,26 +654,42 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
         html += '        </div>\n';
       });
       html += '      </div>\n';
-    } else if (type === 'toggleButton' || type === 'button' || type === 'buttonToDo') {
+    }
+    else if (type === 'toggleButton' || type === 'button' || type === 'buttonToDo') {
       html += '        <div class="option-item">\n';
       html += '          <button type="button" id="btn-' + key + '"></button>\n';
       html += '        </div>\n';
-    } else if (type === 'number' || type === 'text') {
+    }
+    else if (type === 'number' || type === 'text') {
       html += '        <div class="option-item">\n';
       html += '          <input type="' + type + '" id="input-' + key + '" name="' + key + '">\n';
       html += '        </div>\n';
-    } else if (type === 'span') {
+    }
+    else if (type === 'span') {
       html += '        <div class="option-item">\n';
       html += '          <span id="span-' + key + '" class="display-value"></span>\n';
       html += '        </div>\n';
-    } else if (type === 'textarea') {
+    }
+
+    // 在 else if (type === 'textarea') 的區塊後面加上：
+
+    else if (type === 'editableArray') {
       html += '        <div class="option-item" style="width: 100%;">\n';
       html += '          <div style="display: flex; justify-content: space-between; align-items: center;">\n';
-      html += '            <label for="input-' + key + '">List Data</label>\n';
-      html += '            <button type="button" id="toggle-' + key + '" class="toggle-btn">Expand</button>\n';
+      html += '            <label>Data List (' + key + ')</label>\n';
+      html += '            <button type="button" id="toggle-' + key + '" class="toggle-btn">(Expand)</button>\n';
       html += '          </div>\n';
-      html += '          <textarea id="input-' + key + '" name="' + key + '" class="collapsed"></textarea>\n';
-      html += '          <div id="error-' + key + '" style="display: none; color: #ff5555; font-size: 12px; margin-top: 4px;">must match to https://www.youtube.com/@*/videos</div>\n';
+
+      // 預設隱藏 (display: none)
+      html += '          <div id="container-' + key + '" class="editable-array-container" style="display: none;">\n';
+      html += '            <div class="input-row">\n';
+      html += '              <input type="text" id="input-' + key + '" placeholder="Enter URL...">\n';
+      html += '              <button type="button" id="clear-' + key + '">Clear</button>\n';
+      html += '              <button type="button" id="add-' + key + '">Add</button>\n';
+      html += '            </div>\n';
+      html += '            <div id="error-' + key + '" style="display: none; color: #ff5555; font-size: 12px; margin-bottom: 8px;">https://www.youtube.com/@*/videos or https://www.youtube.com/channel/*</div>\n';
+      html += '            <ul id="list-' + key + '" class="editable-array-list"></ul>\n';
+      html += '          </div>\n';
       html += '        </div>\n';
     }
 
