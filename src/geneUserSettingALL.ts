@@ -377,7 +377,7 @@ async function initOptions(): Promise<void> {
     
     else if (type === 'editableArray') {
       const container = document.getElementById('container-' + (storageKey as string));
-      const inputEl = document.getElementById('input-' + (storageKey as string)) as HTMLInputElement | null;
+const inputEl = document.getElementById('input-' + (storageKey as string)) as HTMLTextAreaElement | null;
       const clearBtn = document.getElementById('clear-' + (storageKey as string));
       const addBtn = document.getElementById('add-' + (storageKey as string));
       const errorEl = document.getElementById('error-' + (storageKey as string));
@@ -439,33 +439,56 @@ async function initOptions(): Promise<void> {
         });
       }
 
-      // 新增按鈕
+      // 2. 更新 addBtn 的點擊事件邏輯：
       addBtn.addEventListener('click', async () => {
-        const val = inputEl.value.trim();
-        if (!val) return;
+        const rawVal = inputEl.value;
+        if (!rawVal.trim()) return;
 
-        // 驗證邏輯：如果沒有設定 Regex 就全過，否則必須至少符合其中一個 (OR)
-        const isValid = regexes.length === 0 ? true : regexes.some(r => r.test(val));
+        // 支援 Windows (\\r\\n) 與 Linux/Mac (\\n) 的換行符號，過濾掉空白行
+        const lines = rawVal.split(/\\r?\\n/).map(l => l.trim()).filter(l => l !== '');
+        
+        let hasError = false;
+        let addedCount = 0;
+        const invalidLines: string[] = [];
 
-        if (!isValid) {
-          if (errorEl) errorEl.style.display = 'block';
-          inputEl.style.borderColor = '#ff5555';
-          return;
-        }
+        lines.forEach(line => {
+          // 逐行驗證
+          const isValid = regexes.length === 0 ? true : regexes.some(r => r.test(line));
+          
+          if (isValid) {
+            // 驗證成功且沒重複，就準備加入
+            if (!currentArray.includes(line)) {
+              currentArray.push(line);
+              addedCount++;
+            }
+          } else {
+            // 驗證失敗，記錄下來
+            hasError = true;
+            invalidLines.push(line);
+          }
+        });
 
-        // 驗證成功
-        if (errorEl) errorEl.style.display = 'none';
-        inputEl.style.borderColor = '#005500';
-
-        // 避免重複加入
-        if (!currentArray.includes(val)) {
-          currentArray.push(val);
+        // 只要有新增成功的項目，就存檔並更新畫面
+        if (addedCount > 0) {
           await syncStoOpSet(storageKey as string, currentArray);
           renderList();
         }
-        
-        // 加入成功後清空輸入框
-        inputEl.value = ''; 
+
+        // 處理畫面回饋
+        if (hasError) {
+          if (errorEl) {
+            errorEl.style.display = 'block';
+            errorEl.textContent = \`has ${invalidLines.length} error \`;
+          }
+          inputEl.style.borderColor = '#ff5555';
+          // 將不合格的網址塞回輸入框，讓你可以直接檢查/修改，不用重貼
+          inputEl.value = invalidLines.join('\\n'); 
+        } else {
+          // 全部成功
+          if (errorEl) errorEl.style.display = 'none';
+          inputEl.style.borderColor = '#005500';
+          inputEl.value = ''; 
+        }
       });
     }
   });
@@ -667,12 +690,14 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
       html += '          </div>\n';
 
       html += '          <div id="container-' + key + '" class="editable-array-container" style="">\n';
-      html += '            <div class="input-row">\n';
-      html += '              <input type="text" id="input-' + key + '" placeholder="Enter URL...">\n';
-      html += '              <button type="button" id="clear-' + key + '">Clear</button>\n';
-      html += '              <button type="button" id="add-' + key + '">Add</button>\n';
+      html += '            <div class="input-row" style="align-items: flex-start;">\n';
+      html += '              <textarea id="input-' + key + '" placeholder="input multilines..." rows="3" style="flex: 1; resize: vertical; background-color: #1a1a1a; border: 1px solid #005500; color: #00ff00; padding: 4px 8px; border-radius: 4px; font-family: inherit;"></textarea>\n';
+      html += '              <div style="display: flex; flex-direction: column; gap: 4px;">\n';
+      html += '                <button type="button" id="clear-' + key + '">Clear</button>\n';
+      html += '                <button type="button" id="add-' + key + '">Add</button>\n';
+      html += '              </div>\n';
       html += '            </div>\n';
-      html += '            <div id="error-' + key + '" style="display: none; color: #ff5555; font-size: 12px; margin-bottom: 8px;">error</div>\n';
+      html += '            <div id="error-' + key + '" style="display: none; color: #ff5555; font-size: 12px; margin-bottom: 8px;">some lines error</div>\n';
       html += '            <ul id="list-' + key + '" class="editable-array-list"></ul>\n';
       html += '          </div>\n';
       html += '        </div>\n';
