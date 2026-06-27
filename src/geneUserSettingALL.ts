@@ -657,7 +657,7 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
       html += '        </div>\n';
     } else if (type === 'editableArray') {
       html += '        <div class="option-item" style="width: 100%;">\n';
-      html += '          <div style="display: flex; justify-content: space-between; align-items: center;">\n';
+      html += '          <div style="">\n';
       const regexSamples = config.regexSamples;
       if (regexSamples) {
         for (let content of regexSamples) {
