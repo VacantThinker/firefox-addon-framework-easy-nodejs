@@ -17,7 +17,7 @@ export interface UserSettingItem {
   options?: string[] | number[] | boolean[];
   skipThis?: boolean;
   visibilityControl?: VisibilityControl;
-  validationRegexOr?: string[];
+  validationRegexSome?: string[];
 }
 
 export type UserSettingsInput = Record<string, UserSettingItem>;
@@ -216,7 +216,7 @@ interface BaseSettingConfig {
   selected?: string | boolean | string[] | number;
   visibilityControl?: VisibilityControl;
   skipThis?: boolean;
-  validationRegexOr?: string[];
+  validationRegexSome?: string[];
 }
 
 interface RadioSettingConfig extends BaseSettingConfig {
@@ -373,10 +373,7 @@ async function initOptions(): Promise<void> {
       triggerVisibility(storageKey, initialValue);
     }
     
-    // 在 else if (type === 'textarea') 的區塊後面加上：
-
     else if (type === 'editableArray') {
-      const toggleBtn = document.getElementById('toggle-' + (storageKey as string));
       const container = document.getElementById('container-' + (storageKey as string));
       const inputEl = document.getElementById('input-' + (storageKey as string)) as HTMLInputElement | null;
       const clearBtn = document.getElementById('clear-' + (storageKey as string));
@@ -390,18 +387,8 @@ async function initOptions(): Promise<void> {
       let currentArray: string[] = Array.isArray(initialValue) ? [...initialValue] : [];
       
       // 準備 Regex 陣列
-      const regexStrings = config.validationRegexOr || [];
+      const regexStrings = config.validationRegexSome || [];
       const regexes = regexStrings.map(rStr => new RegExp(rStr));
-
-      // 展開/收起邏輯
-      if (toggleBtn) {
-        let isExpanded = false; // 預設收起
-        toggleBtn.addEventListener('click', () => {
-          isExpanded = !isExpanded;
-          container.style.display = isExpanded ? 'block' : 'none';
-          toggleBtn.textContent = isExpanded ? '(Collapse)' : '(Expand)';
-        });
-      }
 
       // 渲染列表的函數
       const renderList = () => {
@@ -654,40 +641,36 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
         html += '        </div>\n';
       });
       html += '      </div>\n';
-    }
-    else if (type === 'toggleButton' || type === 'button' || type === 'buttonToDo') {
+    } else if (type === 'toggleButton' || type === 'button' || type === 'buttonToDo') {
       html += '        <div class="option-item">\n';
       html += '          <button type="button" id="btn-' + key + '"></button>\n';
       html += '        </div>\n';
-    }
-    else if (type === 'number' || type === 'text') {
+    } else if (type === 'number' || type === 'text') {
       html += '        <div class="option-item">\n';
       html += '          <input type="' + type + '" id="input-' + key + '" name="' + key + '">\n';
       html += '        </div>\n';
-    }
-    else if (type === 'span') {
+    } else if (type === 'span') {
       html += '        <div class="option-item">\n';
       html += '          <span id="span-' + key + '" class="display-value"></span>\n';
       html += '        </div>\n';
-    }
-
-    // 在 else if (type === 'textarea') 的區塊後面加上：
-
-    else if (type === 'editableArray') {
+    } else if (type === 'editableArray') {
       html += '        <div class="option-item" style="width: 100%;">\n';
       html += '          <div style="display: flex; justify-content: space-between; align-items: center;">\n';
-      html += '            <label>Data List (' + key + ')</label>\n';
-      html += '            <button type="button" id="toggle-' + key + '" class="toggle-btn">(Expand)</button>\n';
+      const validationRegexSome = config.validationRegexSome;
+      if (validationRegexSome) {
+        for (let content of validationRegexSome) {
+          html += '            <label>' + content + '</label>\n';
+        }
+      }
       html += '          </div>\n';
 
-      // 預設隱藏 (display: none)
-      html += '          <div id="container-' + key + '" class="editable-array-container" style="display: none;">\n';
+      html += '          <div id="container-' + key + '" class="editable-array-container" style="">\n';
       html += '            <div class="input-row">\n';
       html += '              <input type="text" id="input-' + key + '" placeholder="Enter URL...">\n';
       html += '              <button type="button" id="clear-' + key + '">Clear</button>\n';
       html += '              <button type="button" id="add-' + key + '">Add</button>\n';
       html += '            </div>\n';
-      html += '            <div id="error-' + key + '" style="display: none; color: #ff5555; font-size: 12px; margin-bottom: 8px;">https://www.youtube.com/@*/videos or https://www.youtube.com/channel/*</div>\n';
+      html += '            <div id="error-' + key + '" style="display: none; color: #ff5555; font-size: 12px; margin-bottom: 8px;">error</div>\n';
       html += '            <ul id="list-' + key + '" class="editable-array-list"></ul>\n';
       html += '          </div>\n';
       html += '        </div>\n';
