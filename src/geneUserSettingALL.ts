@@ -206,7 +206,7 @@ interface VisibilityControl {
   expectedValue: string | boolean;
 }
 type TypeUserSetting =
-  |'radio' | 'checkbox' | 'text' | 'number'
+  | 'radio' | 'checkbox' | 'text' | 'number'
   | 'button' | 'toggleButton' | 'buttonToDo' | 'span'
   | 'textarea'
 
@@ -216,7 +216,7 @@ interface BaseSettingConfig {
   selected?: string | boolean | string[] | number;
   visibilityControl?: VisibilityControl;
   skipThis?: boolean;
-  validationRegex?: string; // <-- 加在這裡
+  validationRegex?: string;
 }
 
 interface RadioSettingConfig extends BaseSettingConfig {
@@ -382,22 +382,20 @@ async function initOptions(): Promise<void> {
 
       textarea.value = initialValue !== undefined && initialValue !== null ? String(initialValue) : '';
 
-      // 展開/收起邏輯
       if (toggleBtn) {
         toggleBtn.addEventListener('click', () => {
           if (textarea.classList.contains('collapsed')) {
             textarea.classList.remove('collapsed');
             textarea.classList.add('expanded');
-            toggleBtn.textContent = '🔼 (Collapse)';
+            toggleBtn.textContent = 'Collapse';
           } else {
             textarea.classList.remove('expanded');
             textarea.classList.add('collapsed');
-            toggleBtn.textContent = '🔽 (Expand)';
+            toggleBtn.textContent = 'Expand';
           }
         });
       }
 
-      // 準備 Regex
       const regexStr = config.validationRegex;
       let regex: RegExp | null = null;
       if (regexStr) {
@@ -412,20 +410,18 @@ async function initOptions(): Promise<void> {
         const target = e.currentTarget as HTMLTextAreaElement;
         const rawValue = target.value;
 
-        // 逐行驗證邏輯
         let isValid = true;
         if (regex && rawValue.trim() !== '') {
            const lines = rawValue.split('\\\\n');
            isValid = lines.every(line => {
              const trimmedLine = line.trim();
-             return trimmedLine === '' || regex!.test(trimmedLine); // 允許空行，或必須符合格式
+             return trimmedLine === '' || regex!.test(trimmedLine); 
            });
         }
 
         if (!isValid) {
            textarea.style.borderColor = '#ff5555';
            if(errorMsg) errorMsg.style.display = 'block';
-           // 格式錯誤時不存檔，保護資料正確性
            return;
         } else {
            textarea.style.borderColor = '#005500';
@@ -538,7 +534,6 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
     '      font-size: 13px;\n' +
     '      color: #008800;\n' +
     '    }\n' +
-    // 在你原本的 CSS 裡面加入這些：
     '    textarea {\n' +
     '      width: 100%;\n' +
     '      background-color: #1a1a1a;\n' +
@@ -611,10 +606,10 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
       html += '        <div class="option-item" style="width: 100%;">\n';
       html += '          <div style="display: flex; justify-content: space-between; align-items: center;">\n';
       html += '            <label for="input-' + key + '">List Data</label>\n';
-      html += '            <button type="button" id="toggle-' + key + '" class="toggle-btn">🔽 (Expand)</button>\n';
+      html += '            <button type="button" id="toggle-' + key + '" class="toggle-btn">Expand</button>\n';
       html += '          </div>\n';
       html += '          <textarea id="input-' + key + '" name="' + key + '" class="collapsed"></textarea>\n';
-      html += '          <div id="error-' + key + '" style="display: none; color: #ff5555; font-size: 12px; margin-top: 4px;">格式錯誤！每行必須符合指定的 URL 格式。</div>\n';
+      html += '          <div id="error-' + key + '" style="display: none; color: #ff5555; font-size: 12px; margin-top: 4px;">must match to https://www.youtube.com/@*/videos</div>\n';
       html += '        </div>\n';
     }
 
