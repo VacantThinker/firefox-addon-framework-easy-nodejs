@@ -8,6 +8,7 @@ export interface VisibilityControl {
 export type TypeUserSetting=
   |'radio' | 'checkbox' | 'text' | 'number'
   | 'button' | 'toggleButton' | 'buttonToDo' | 'span'
+|'textarea'
 
 export interface UserSettingItem {
   type: TypeUserSetting;
@@ -15,6 +16,7 @@ export interface UserSettingItem {
   options?: string[] | number[] | boolean[];
   skipThis?: boolean;
   visibilityControl?: VisibilityControl;
+  validationRegex?: string; // <-- 加上正則驗證屬性
 }
 
 export type UserSettingsInput = Record<string, UserSettingItem>;
@@ -209,6 +211,7 @@ interface BaseSettingConfig {
   selected?: string | boolean | string[] | number;
   visibilityControl?: VisibilityControl;
   skipThis?: boolean;
+  validationRegex?: string; // <-- 加在這裡
 }
 
 interface RadioSettingConfig extends BaseSettingConfig {
@@ -364,6 +367,71 @@ async function initOptions(): Promise<void> {
       }
       triggerVisibility(storageKey, initialValue);
     }
+    
+    else if (type === 'textarea') {
+      const textarea = document.getElementById('input-' + (storageKey as string)) as HTMLTextAreaElement | null;
+      const toggleBtn = document.getElementById('toggle-' + (storageKey as string)) as HTMLButtonElement | null;
+      const errorMsg = document.getElementById('error-' + (storageKey as string)) as HTMLDivElement | null;
+      
+      if (!textarea) return;
+
+      textarea.value = initialValue !== undefined && initialValue !== null ? String(initialValue) : '';
+
+      // 展開/收起邏輯
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+          if (textarea.classList.contains('collapsed')) {
+            textarea.classList.remove('collapsed');
+            textarea.classList.add('expanded');
+            toggleBtn.textContent = '🔼 (Collapse)';
+          } else {
+            textarea.classList.remove('expanded');
+            textarea.classList.add('collapsed');
+            toggleBtn.textContent = '🔽 (Expand)';
+          }
+        });
+      }
+
+      // 準備 Regex
+      const regexStr = config.validationRegex;
+      let regex: RegExp | null = null;
+      if (regexStr) {
+         try { regex = new RegExp(regexStr); } catch(e) {}
+      }
+
+      const debouncedSave = debounce(async (val: string) => {
+        await syncStoOpSet(storageKey as string, val);
+      }, 500);
+
+      textarea.addEventListener('input', (e) => {
+        const target = e.currentTarget as HTMLTextAreaElement;
+        const rawValue = target.value;
+
+        // 逐行驗證邏輯
+        let isValid = true;
+        if (regex && rawValue.trim() !== '') {
+           const lines = rawValue.split('\\\\n');
+           isValid = lines.every(line => {
+             const trimmedLine = line.trim();
+             return trimmedLine === '' || regex!.test(trimmedLine); // 允許空行，或必須符合格式
+           });
+        }
+
+        if (!isValid) {
+           textarea.style.borderColor = '#ff5555';
+           if(errorMsg) errorMsg.style.display = 'block';
+           // 格式錯誤時不存檔，保護資料正確性
+           return;
+        } else {
+           textarea.style.borderColor = '#005500';
+           if(errorMsg) errorMsg.style.display = 'none';
+        }
+
+        debouncedSave(rawValue);
+        triggerVisibility(storageKey, rawValue);
+      });
+      triggerVisibility(storageKey, initialValue);
+    }
   });
 }
 
@@ -465,6 +533,38 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
     '      font-size: 13px;\n' +
     '      color: #008800;\n' +
     '    }\n' +
+    // 在你原本的 CSS 裡面加入這些：
+    '    textarea {\n' +
+    '      width: 100%;\n' +
+    '      background-color: #1a1a1a;\n' +
+    '      border: 1px solid #005500;\n' +
+    '      color: #00ff00;\n' +
+    '      padding: 8px;\n' +
+    '      border-radius: 4px;\n' +
+    '      font-family: inherit;\n' +
+    '      resize: vertical;\n' +
+    '      box-sizing: border-box;\n' +
+    '      transition: height 0.2s ease;\n' +
+    '      white-space: pre;\n' +
+    '      overflow-wrap: normal;\n' +
+    '      overflow-x: auto;\n' +
+    '    }\n' +
+    '    textarea:focus {\n' +
+    '      outline: none;\n' +
+    '      border-color: #00ff00;\n' +
+    '    }\n' +
+    '    textarea.collapsed {\n' +
+    '      height: 80px;\n' +
+    '    }\n' +
+    '    textarea.expanded {\n' +
+    '      height: 350px;\n' +
+    '    }\n' +
+    '    .toggle-btn {\n' +
+    '      margin-bottom: 6px;\n' +
+    '      background-color: transparent;\n' +
+    '      border: 1px solid #005500;\n' +
+    '      color: #00aa00;\n' +
+    '    }\n' +
     '  </style>\n' +
     '</head>\n' +
     '<body>\n' +
@@ -504,6 +604,16 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
     else if (type === 'span') {
       html += '        <div class="option-item">\n';
       html += '          <span id="span-' + key + '" class="display-value"></span>\n';
+      html += '        </div>\n';
+    }
+    else if (type === 'textarea') {
+      html += '        <div class="option-item" style="width: 100%;">\n';
+      html += '          <div style="display: flex; justify-content: space-between; align-items: center;">\n';
+      html += '            <label for="input-' + key + '">List Data</label>\n';
+      html += '            <button type="button" id="toggle-' + key + '" class="toggle-btn">🔽 (Expand)</button>\n';
+      html += '          </div>\n';
+      html += '          <textarea id="input-' + key + '" name="' + key + '" class="collapsed"></textarea>\n';
+      html += '          <div id="error-' + key + '" style="display: none; color: #ff5555; font-size: 12px; margin-top: 4px;">格式錯誤！每行必須符合指定的 URL 格式。</div>\n';
       html += '        </div>\n';
     }
 
