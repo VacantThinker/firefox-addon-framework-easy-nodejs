@@ -478,7 +478,7 @@ const inputEl = document.getElementById('input-' + (storageKey as string)) as HT
         if (hasError) {
           if (errorEl) {
             errorEl.style.display = 'block';
-            errorEl.textContent = \`has ${invalidLines.length} error \`;
+            errorEl.textContent = " error ";
           }
           inputEl.style.borderColor = '#ff5555';
           // 將不合格的網址塞回輸入框，讓你可以直接檢查/修改，不用重貼
