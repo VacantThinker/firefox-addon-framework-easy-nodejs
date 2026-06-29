@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 export interface VisibilityControl {
-  targetField: string;
+  targetField: string[];
   expectedValue: string | boolean;
 }
 
@@ -205,7 +205,7 @@ function generateOptionsTs(settings: UserSettingsInput): string {
 import {UserSettings} from '../types';
 
 interface VisibilityControl {
-  targetField: keyof UserSettings;
+  targetField: (keyof UserSettings)[];
   expectedValue: string | boolean;
 }
 
