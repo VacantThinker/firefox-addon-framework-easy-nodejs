@@ -609,7 +609,6 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
     '      list-style: none;\n' +
     '      padding: 0;\n' +
     '      margin: 0;\n' +
-    '      max-height: 300px;\n' +
     '      overflow-y: auto;\n' +
     '      border: 1px solid #003300;\n' +
     '      border-radius: 4px;\n' +
