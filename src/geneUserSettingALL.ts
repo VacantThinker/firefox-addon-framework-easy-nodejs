@@ -9,7 +9,7 @@ export interface VisibilityControl {
 export type TypeUserSetting =
   | 'radio' | 'checkbox' | 'text' | 'number'
   | 'button' | 'toggleButton' | 'buttonToDo' | 'span'
-  | 'editableArray'
+  | 'editableArray' | 'editableTime24h'
 
 export interface UserSettingItem {
   type: TypeUserSetting;
@@ -17,6 +17,7 @@ export interface UserSettingItem {
   options?: string[] | number[] | boolean[];
   skipThis?: boolean;
   visibilityControl?: VisibilityControl;
+
   validationRegexSome?: string[];
   regexSamples?: string[];
 }
@@ -143,6 +144,7 @@ function generateServiceUserSettingsTs(settings: UserSettingsInput): string {
     else if (config.type === 'number') returnType = 'number';
     else if (config.type === 'toggleButton' || config.type === 'button') returnType = 'boolean';
     else if (config.type === 'editableArray') returnType = 'string[]';
+    else if (config.type === 'editableTime24h') returnType = 'string';
     else returnType = typeof config.selected;
 
     const capitalizedKey: string = key.charAt(0).toUpperCase() + key.slice(1);
@@ -196,8 +198,7 @@ ${individualGetters.join('\n\n')}
 function generateOptionsTs(settings: UserSettingsInput): string {
   const schemaStr: string = JSON.stringify(settings, null, 2);
 
-  return `
-import {
+  return `import {
   syncStoOpGet,
   syncStoOpSet
 } from '@vacantthinker/firefox-addon-framework-easy';
@@ -207,10 +208,11 @@ interface VisibilityControl {
   targetField: keyof UserSettings;
   expectedValue: string | boolean;
 }
+
 type TypeUserSetting =
   | 'radio' | 'checkbox' | 'text' | 'number'
   | 'button' | 'toggleButton' | 'buttonToDo' | 'span'
-  | 'editableArray'
+  | 'editableArray' | 'editableTime24h'
   
 interface BaseSettingConfig {
   type: TypeUserSetting;
@@ -236,7 +238,7 @@ interface CheckboxSettingConfig extends BaseSettingConfig {
 
 type UserSettingsSchema = {
   [K in keyof UserSettings]: RadioSettingConfig | CheckboxSettingConfig | BaseSettingConfig;
-};
+}
 
 const userSettings: UserSettingsSchema = ${schemaStr};
 
@@ -368,6 +370,26 @@ async function initOptions(): Promise<void> {
       triggerVisibility(storageKey, initialValue);
     }
 
+    else if (type === 'editableTime24h') {
+      const input = document.getElementById('input-' + (storageKey as string)) as HTMLInputElement | null;
+      if (!input) return;
+
+      // HTML time inputs expect "HH:mm"
+      input.value = initialValue !== undefined ? String(initialValue) : '00:00';
+
+      const debouncedSave = debounce(async (val: string) => {
+        await syncStoOpSet(storageKey as string, val);
+      }, 500);
+
+      input.addEventListener('input', (e) => {
+        const target = e.currentTarget as HTMLInputElement;
+        const rawValue = target.value; 
+        debouncedSave(rawValue);
+        triggerVisibility(storageKey, rawValue);
+      });
+      triggerVisibility(storageKey, initialValue);
+    }
+
     else if (type === 'span') {
       const span = document.getElementById('span-' + (storageKey as string));
       if (span) {
@@ -378,7 +400,7 @@ async function initOptions(): Promise<void> {
     
     else if (type === 'editableArray') {
       const container = document.getElementById('container-' + (storageKey as string));
-const inputEl = document.getElementById('input-' + (storageKey as string)) as HTMLTextAreaElement | null;
+      const inputEl = document.getElementById('input-' + (storageKey as string)) as HTMLTextAreaElement | null;
       const clearBtn = document.getElementById('clear-' + (storageKey as string));
       const addBtn = document.getElementById('add-' + (storageKey as string));
       const errorEl = document.getElementById('error-' + (storageKey as string));
@@ -386,14 +408,11 @@ const inputEl = document.getElementById('input-' + (storageKey as string)) as HT
 
       if (!container || !inputEl || !listEl || !addBtn) return;
 
-      // 確保資料是陣列
       let currentArray: string[] = Array.isArray(initialValue) ? [...initialValue] : [];
       
-      // 準備 Regex 陣列
       const regexStrings = config.validationRegexSome || [];
       const regexes = regexStrings.map(rStr => new RegExp(rStr));
 
-      // 渲染列表的函數
       const renderList = () => {
         listEl.innerHTML = '';
         currentArray.forEach((item, index) => {
@@ -407,7 +426,7 @@ const inputEl = document.getElementById('input-' + (storageKey as string)) as HT
           const rmBtn = document.createElement('button');
           rmBtn.type = 'button';
           rmBtn.className = 'remove-btn';
-          rmBtn.textContent = '❌'; // 或是寫 Remove
+          rmBtn.textContent = '❌'; 
           rmBtn.setAttribute('data-index', String(index));
 
           li.appendChild(textSpan);
@@ -415,23 +434,20 @@ const inputEl = document.getElementById('input-' + (storageKey as string)) as HT
           listEl.appendChild(li);
         });
 
-        // 綁定刪除按鈕事件
         const removeBtns = listEl.querySelectorAll('.remove-btn');
         removeBtns.forEach(btn => {
           btn.addEventListener('click', async (e) => {
             const target = e.currentTarget as HTMLButtonElement;
             const idx = parseInt(target.getAttribute('data-index') || '0', 10);
-            currentArray.splice(idx, 1); // 刪除該項目
+            currentArray.splice(idx, 1); 
             await syncStoOpSet(storageKey as string, currentArray);
-            renderList(); // 重新渲染
+            renderList(); 
           });
         });
       };
 
-      // 初始渲染
       renderList();
 
-      // 清除按鈕
       if (clearBtn) {
         clearBtn.addEventListener('click', () => {
           inputEl.value = '';
@@ -440,12 +456,10 @@ const inputEl = document.getElementById('input-' + (storageKey as string)) as HT
         });
       }
 
-      // 2. 更新 addBtn 的點擊事件邏輯：
       addBtn.addEventListener('click', async () => {
         const rawVal = inputEl.value;
         if (!rawVal.trim()) return;
 
-        // 支援 Windows (\\r\\n) 與 Linux/Mac (\\n) 的換行符號，過濾掉空白行
         const lines = rawVal.split(/\\r?\\n/).map(l => l.trim()).filter(l => l !== '');
         
         let hasError = false;
@@ -453,39 +467,32 @@ const inputEl = document.getElementById('input-' + (storageKey as string)) as HT
         const invalidLines: string[] = [];
 
         lines.forEach(line => {
-          // 逐行驗證
           const isValid = regexes.length === 0 ? true : regexes.some(r => r.test(line));
           
           if (isValid) {
-            // 驗證成功且沒重複，就準備加入
             if (!currentArray.includes(line)) {
               currentArray.push(line);
               addedCount++;
             }
           } else {
-            // 驗證失敗，記錄下來
             hasError = true;
             invalidLines.push(line);
           }
         });
 
-        // 只要有新增成功的項目，就存檔並更新畫面
         if (addedCount > 0) {
           await syncStoOpSet(storageKey as string, currentArray);
           renderList();
         }
 
-        // 處理畫面回饋
         if (hasError) {
           if (errorEl) {
             errorEl.style.display = 'block';
             errorEl.textContent = " error ";
           }
           inputEl.style.borderColor = '#ff5555';
-          // 將不合格的網址塞回輸入框，讓你可以直接檢查/修改，不用重貼
           inputEl.value = invalidLines.join('\\n'); 
         } else {
-          // 全部成功
           if (errorEl) errorEl.style.display = 'none';
           inputEl.style.borderColor = '#005500';
           inputEl.value = ''; 
@@ -553,7 +560,7 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
     '    .options-row .option-item {\n' +
     '      margin-bottom: 0;\n' +
     '    }\n' +
-    '    input[type="text"], input[type="number"] {\n' +
+    '    input[type="text"], input[type="number"], input[type="time"] {\n' +
     '      background-color: #1a1a1a;\n' +
     '      border: 1px solid #005500;\n' +
     '      color: #00ff00;\n' +
@@ -561,7 +568,7 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
     '      border-radius: 4px;\n' +
     '      font-family: inherit;\n' +
     '    }\n' +
-    '    input[type="text"]:focus, input[type="number"]:focus {\n' +
+    '    input[type="text"]:focus, input[type="number"]:focus, input[type="time"]:focus {\n' +
     '      outline: none;\n' +
     '      border-color: #00ff00;\n' +
     '    }\n' +
@@ -593,7 +600,6 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
     '      font-size: 13px;\n' +
     '      color: #008800;\n' +
     '    }\n' +
-
     '    .editable-array-container {\n' +
     '      margin-top: 8px;\n' +
     '    }\n' +
@@ -673,6 +679,10 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
     } else if (type === 'number' || type === 'text') {
       html += '        <div class="option-item">\n';
       html += '          <input type="' + type + '" id="input-' + key + '" name="' + key + '">\n';
+      html += '        </div>\n';
+    } else if (type === 'editableTime24h') {
+      html += '        <div class="option-item">\n';
+      html += '          <input type="time" id="input-' + key + '" name="' + key + '">\n';
       html += '        </div>\n';
     } else if (type === 'span') {
       html += '        <div class="option-item">\n';
