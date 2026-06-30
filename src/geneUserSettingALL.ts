@@ -198,10 +198,7 @@ ${individualGetters.join('\n\n')}
 function generateOptionsTs(settings: UserSettingsInput): string {
   const schemaStr: string = JSON.stringify(settings, null, 2);
 
-  return `import {
-  syncStoOpGet,
-  syncStoOpSet
-} from '@vacantthinker/firefox-addon-framework-easy';
+  return `import {syncStoOpGet, syncStoOpSet} from '@vacantthinker/firefox-addon-framework-easy';
 import {UserSettings} from '../types';
 
 interface TimeChangedItem {
@@ -302,11 +299,14 @@ async function initOptions(): Promise<void> {
 
           await syncStoOpSet(storageKey as string, allChecked);
 
-          browser.runtime.sendMessage({
-            act: 'actOptionPageCheckItemClicked',
-            radioItem: {storageKey, option: el.value}
-          }).catch(() => {});
-
+          const val = el.value;
+await browser.runtime.sendMessage({
+  act: 'actUserSettingUpdated',
+  payload: { 
+    storageKey: storageKey, 
+    value: val 
+  }
+})
           triggerVisibility(storageKey, allChecked);
         });
       });
@@ -330,10 +330,14 @@ async function initOptions(): Promise<void> {
 
           await syncStoOpSet(storageKey as string, optVal);
 
-          browser.runtime.sendMessage({
-            act: 'actOptionPageRadioItemClicked',
-            radioItem: {storageKey, option: optVal}
-          }).catch(() => {});
+          const val = optVal;
+await browser.runtime.sendMessage({
+  act: 'actUserSettingUpdated',
+  payload: { 
+    storageKey: storageKey, 
+    value: val 
+  }
+})
 
           triggerVisibility(storageKey, optVal);
         });
@@ -377,30 +381,78 @@ async function initOptions(): Promise<void> {
       triggerVisibility(storageKey, initialValue);
     }
 
-    else if (type === 'editableTime24h') {
-      const input = document.getElementById('input-' + (storageKey as string)) as HTMLInputElement | null;
-      if (!input) return;
+else if (type === 'editableTime24h') {
+      const btnHour = document.getElementById('btn-hour-' + (storageKey as string)) as HTMLButtonElement | null;
+      const btnMin = document.getElementById('btn-min-' + (storageKey as string)) as HTMLButtonElement | null;
+      const panelHour = document.getElementById('panel-hour-' + (storageKey as string)) as HTMLDivElement | null;
+      const panelMin = document.getElementById('panel-min-' + (storageKey as string)) as HTMLDivElement | null;
 
-      // HTML time inputs expect "HH:mm"
-      input.value = initialValue !== undefined ? String(initialValue) : '00:00';
+      if (!btnHour || !btnMin || !panelHour || !panelMin) return;
 
-      const debouncedSave = debounce(async (val: string) => {
+      // Extract initial configurations
+      let timeVal = initialValue !== undefined ? String(initialValue) : '00:00';
+      if (!timeVal.includes(':')) timeVal = '00:00';
+      
+      let [currentHour, currentMin] = timeVal.split(':');
+      btnHour.textContent = currentHour;
+      btnMin.textContent = currentMin;
+
+      const saveTimeChange = async (h: string, m: string) => {
+        const val = h + ':' + m;
+        
         await syncStoOpSet(storageKey as string, val);
-        const timeChangedItem: TimeChangedItem = {storageKey, option: val};
+        
+        // Unify everything into one payload contract!
         await browser.runtime.sendMessage({
-          act: 'actOptionPageTimeChanged',
-          timeChangedItem
-        });
+          act: 'actUserSettingUpdated',
+          payload: { 
+            storageKey: storageKey, 
+            value: val 
+          }
+        })
+          
+        triggerVisibility(storageKey, val);
+      };
 
-      }, 500);
-
-      input.addEventListener('input', (e) => {
-        const target = e.currentTarget as HTMLInputElement;
-        const rawValue = target.value; 
-        debouncedSave(rawValue);
-        triggerVisibility(storageKey, rawValue);
+      // Toggle panels visibility
+      btnHour.addEventListener('click', (e) => {
+        e.stopPropagation();
+        panelMin.style.display = 'none';
+        panelHour.style.display = panelHour.style.display === 'grid' ? 'none' : 'grid';
       });
-      triggerVisibility(storageKey, initialValue);
+
+      btnMin.addEventListener('click', (e) => {
+        e.stopPropagation();
+        panelHour.style.display = 'none';
+        panelMin.style.display = panelMin.style.display === 'grid' ? 'none' : 'grid';
+      });
+
+      // Handle item selections inside panels
+      panelHour.querySelectorAll<HTMLButtonElement>('.time24h-opt').forEach(opt => {
+        opt.addEventListener('click', async () => {
+          currentHour = opt.getAttribute('data-val') || '00';
+          btnHour.textContent = currentHour;
+          panelHour.style.display = 'none';
+          await saveTimeChange(currentHour, currentMin);
+        });
+      });
+
+      panelMin.querySelectorAll<HTMLButtonElement>('.time24h-opt').forEach(opt => {
+        opt.addEventListener('click', async () => {
+          currentMin = opt.getAttribute('data-val') || '00';
+          btnMin.textContent = currentMin;
+          panelMin.style.display = 'none';
+          await saveTimeChange(currentHour, currentMin);
+        });
+      });
+
+      // Close panels if user clicks anywhere else on screen
+      document.addEventListener('click', () => {
+        panelHour.style.display = 'none';
+        panelMin.style.display = 'none';
+      });
+
+      triggerVisibility(storageKey, timeVal);
     }
 
     else if (type === 'span') {
@@ -693,10 +745,35 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
       html += '        <div class="option-item">\n';
       html += '          <input type="' + type + '" id="input-' + key + '" name="' + key + '">\n';
       html += '        </div>\n';
+
     } else if (type === 'editableTime24h') {
       html += '        <div class="option-item">\n';
-      html += '          <input type="time" id="input-' + key + '" name="' + key + '">\n';
+      html += '          \n';
+      html += '          <div class="time24h-picker" id="picker-' + key + '" style="display: inline-flex; align-items: center; gap: 4px; position: relative;">\n';
+      html += '            <button type="button" id="btn-hour-' + key + '" class="time24h-btn" style="min-width: 40px;">00</button>\n';
+      html += '            <span style="color: #00ff00; font-weight: bold;">:</span>\n';
+      html += '            <button type="button" id="btn-min-' + key + '" class="time24h-btn" style="min-width: 40px;">00</button>\n';
+      html += '            \n';
+      html += '            \n';
+      html += '            <div id="panel-hour-' + key + '" class="time24h-panel" style="display: none; position: absolute; top: 32px; left: 0; background: #1a1a1a; border: 1px solid #00ff00; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 6px; z-index: 100; max-height: 150px; overflow-y: auto; border-radius: 4px;">\n';
+      for (let h = 0; h < 24; h++) {
+        const hStr = String(h).padStart(2, '0');
+        html += '              <button type="button" class="time24h-opt" data-val="' + hStr + '" style="padding: 4px; background: #2a2a2a; color: #00ff00; border: none; font-size:11px; cursor:pointer;">' + hStr + '</button>\n';
+      }
+      html += '            </div>\n';
+      html += '            \n';
+      html += '            \n';
+      html += '            <div id="panel-min-' + key + '" class="time24h-panel" style="display: none; position: absolute; top: 32px; left: 50px; background: #1a1a1a; border: 1px solid #00ff00; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 6px; z-index: 100; max-height: 150px; overflow-y: auto; border-radius: 4px;">\n';
+      for (let m = 0; m < 60; m += 5) { // steps of 5 for easier clicking, change to m++ if you need every single minute
+        const mStr = String(m).padStart(2, '0');
+        html += '              <button type="button" class="time24h-opt" data-val="' + mStr + '" style="padding: 4px; background: #2a2a2a; color: #00ff00; border: none; font-size:11px; cursor:pointer;">' + mStr + '</button>\n';
+      }
+      // Optional: Add an explicit 59 fallback to panel if incrementing by 5
+      html += '              <button type="button" class="time24h-opt" data-val="59" style="padding: 4px; background: #2a2a2a; color: #00ff00; border: none; font-size:11px; cursor:pointer;">59</button>\n';
+      html += '            </div>\n';
+      html += '          </div>\n';
       html += '        </div>\n';
+
     } else if (type === 'span') {
       html += '        <div class="option-item">\n';
       html += '          <span id="span-' + key + '" class="display-value"></span>\n';
