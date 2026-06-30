@@ -204,6 +204,11 @@ function generateOptionsTs(settings: UserSettingsInput): string {
 } from '@vacantthinker/firefox-addon-framework-easy';
 import {UserSettings} from '../types';
 
+interface TimeChangedItem {
+  storageKey: (keyof UserSettings);
+  option: string;
+}
+
 interface VisibilityControl {
   targetField: (keyof UserSettings)[];
   expectedValue: string | boolean;
@@ -381,6 +386,12 @@ async function initOptions(): Promise<void> {
 
       const debouncedSave = debounce(async (val: string) => {
         await syncStoOpSet(storageKey as string, val);
+        const timeChangedItem: TimeChangedItem = {storageKey, option: val};
+        await browser.runtime.sendMessage({
+          act: 'actOptionPageTimeChanged',
+          timeChangedItem
+        });
+
       }, 500);
 
       input.addEventListener('input', (e) => {
