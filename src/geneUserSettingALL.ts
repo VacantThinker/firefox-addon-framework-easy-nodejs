@@ -764,7 +764,8 @@ function generateOptionsHtml(settings: UserSettingsInput, manifest: ManifestInpu
       html += '            \n';
       html += '            \n';
       html += '            <div id="panel-min-' + key + '" class="time24h-panel" style="display: none; position: absolute; top: 32px; left: 50px; background: #1a1a1a; border: 1px solid #00ff00; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 6px; z-index: 100; max-height: 150px; overflow-y: auto; border-radius: 4px;">\n';
-      for (let m = 0; m < 60; m += 5) { // steps of 5 for easier clicking, change to m++ if you need every single minute
+      for (let m = 0; m < 60; m += 1) { // steps of 5 for easier clicking, change to
+        // m++ if you need every single minute
         const mStr = String(m).padStart(2, '0');
         html += '              <button type="button" class="time24h-opt" data-val="' + mStr + '" style="padding: 4px; background: #2a2a2a; color: #00ff00; border: none; font-size:11px; cursor:pointer;">' + mStr + '</button>\n';
       }
