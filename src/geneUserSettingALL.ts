@@ -254,10 +254,12 @@ function triggerVisibility(sourceKey: keyof UserSettings, currentValue: unknown)
   const config = userSettings[sourceKey];
   if (config && config.visibilityControl) {
     const {targetField, expectedValue} = config.visibilityControl;
-    const targetElement = document.getElementById('fieldset-' + (targetField as string));
-    if (targetElement) {
-      const shouldBeVisible = String(currentValue) === String(expectedValue);
-      targetElement.style.display = shouldBeVisible ? '' : 'none';
+    for (let item of targetField) {
+      const targetElement = document.getElementById('fieldset-' + (item as string));
+      if (targetElement) {
+        const shouldBeVisible = String(currentValue) === String(expectedValue);
+        targetElement.style.display = shouldBeVisible ? '' : 'none';
+      }
     }
   }
 }
