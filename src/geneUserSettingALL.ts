@@ -201,11 +201,6 @@ function generateOptionsTs(settings: UserSettingsInput): string {
   return `import {syncStoOpGet, syncStoOpSet} from '@vacantthinker/firefox-addon-framework-easy';
 import {UserSettings} from '../types';
 
-interface TimeChangedItem {
-  storageKey: (keyof UserSettings);
-  option: string;
-}
-
 interface VisibilityControl {
   targetField: (keyof UserSettings)[];
   expectedValue: string | boolean;
